@@ -1,0 +1,27 @@
+1. Basic information
+Team number (e.g., 01) : 
+#1 Submitter ID : 
+#1 Student Name : 
+
+
+
+2. Index Entry Format
+- Show your index entry design (structure). 
+
+
+3. Page Format
+- Show your internal-page (non-leaf node) design.
+
+- Show your leaf-page (leaf node) design.
+
+
+4. Implementation Detail
+- Have you added your own source file (.cc or .h)?
+
+
+- Other implementation details:
+
+
+5. Other (optional)
+- Freely use this section to tell us about things that are related to the project 3, but not related to the other sections (optional)
+
