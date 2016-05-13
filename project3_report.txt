@@ -3,7 +3,11 @@ Team number (e.g., 01) :
 #1 Submitter ID : 
 #1 Student Name : 
 
+#2 Team Member ID: 
+#2 Student Name:
 
+#3 Team Member ID:
+#3 Student Name:
 
 2. Index Entry Format
 - Show your index entry design (structure). 
