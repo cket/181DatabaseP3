@@ -8,6 +8,25 @@
 
 # define IX_EOF (-1)  // end of the index scan
 
+typedef struct NodeHeader
+{
+    uint16_t numEntries;
+    int freeSpaceOffset;
+    bool isLeaf;
+} NodeHeader;
+
+typedef struct NonLeafEntry
+{
+    int offset; //offset to value. can't store directly b/c don't know data type
+    int pageNum; //page is child node containing entries<value at offset
+} NonLeafEntry;
+
+typedef struct LeafEntry
+{
+    int offSet; //offset to key
+    RID rid; //rid for rest of record
+} LeafEntry;
+
 class IX_ScanIterator;
 class IXFileHandle;
 
