@@ -8,6 +8,9 @@
 
 # define IX_EOF (-1)  // end of the index scan
 
+void* getValue(void * node, int offset, const Attribute &attribute);
+int compareVals(const void * val1, void * val2, const Attribute &attribute);
+
 typedef struct NodeHeader
 {
     uint16_t numEntries;
@@ -76,7 +79,10 @@ class IndexManager {
         NodeHeader getNodeHeader(void *page);
         void setNodeHeader(NodeHeader header, void * page);
         LeafEntry getLeafEntry(void * page, unsigned entryNumber);
+        NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
+        void * searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum=0);
+        void moveEntries(void * page, int i, NodeHeader header);
 };
 
 
