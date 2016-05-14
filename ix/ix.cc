@@ -41,7 +41,7 @@ RC IndexManager::destroyFile(const string &fileName)
 {
 	int err;
 	err = _pf_manager->destroyFile(fileName);
-	if (err !- 0)
+	if (err != 0)
 	{
 		return 1; //bad pfm file destruction
 	}
@@ -76,6 +76,9 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
     //DOES NOT HANDLE FULL NODES
+    // still needs to handle insertion of key into page & decrement freeSpace offset
+    LeafEntry to_insert = LeafEntry();
+    to_insert.rid = rid;
 
     void * node = searchTree(ixfileHandle, key, attribute, 0); //start search from root
     //we now have proper node. Search through sorted record & insert at proper location
@@ -90,6 +93,10 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             //make space for new entry
             moveEntries(node, i, header);
             // insert at old entries offset
+            setLeafEntry(node, i, to_insert);
+            // update node header
+            header.numEntries++;
+            setNodeHeader(header, node);
             return SUCCESS;
         }
     }
