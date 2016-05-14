@@ -33,6 +33,7 @@ class IXFileHandle;
 class IndexManager {
 
     public:
+        PagedFileManager* _pf_manager;
         static IndexManager* instance();
 
         // Create an index file.
@@ -71,6 +72,10 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
+        NodeHeader getNodeHeader(void *page);
+        void setNodeHeader(NodeHeader header, void * page);
+        LeafEntry getLeafEntry(void * page, unsigned entryNumber);
+        void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
 };
 
 
@@ -92,8 +97,8 @@ class IX_ScanIterator {
 
 
 
-class IXFileHandle {
-    public:
+class IXFileHandle: public FileHandle {
+public:
 
     // variables to keep counter for each operation
     unsigned ixReadPageCounter;

@@ -1,5 +1,6 @@
-
+#include "../rbf/pfm.h"
 #include "ix.h"
+#include <stdlib.h>
 
 IndexManager* IndexManager::_index_manager = 0;
 
@@ -13,6 +14,7 @@ IndexManager* IndexManager::instance()
 
 IndexManager::IndexManager()
 {
+    _pf_manager = PagedFileManager::instance();
 }
 
 IndexManager::~IndexManager()
@@ -21,27 +23,32 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-    return -1;
+    _pf_manager->createFile(fileName);
 }
 
 RC IndexManager::destroyFile(const string &fileName)
 {
-    return -1;
+    _pf_manager->destroyFile(fileName);
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle)
 {
-    return -1;
+    _pf_manager->openFile(fileName, ixfileHandle);
 }
 
 RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 {
-    return -1;
+    _pf_manager->closeFile(ixfileHandle);
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-    return -1;
+    void * page = malloc(PAGE_SIZE);
+    //always start at root!
+    ixfileHandle.readPage(0,page); 
+
+    NodeHeader header = getNodeHeader(page);
+    //
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
@@ -49,6 +56,40 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     return -1;
 }
 
+NodeHeader IndexManager::getNodeHeader(void * page)
+{
+    // Getting the slot directory header.
+    NodeHeader header;
+    memcpy (&header, page, sizeof(NodeHeader));
+    return header;
+}
+
+void IndexManager::setNodeHeader(NodeHeader header, void * page)
+{
+    memcpy (page, &header, sizeof(NodeHeader));
+}
+
+LeafEntry IndexManager::getLeafEntry(void * page, unsigned entryNumber)
+{
+    // Getting the slot directory entry data.
+    LeafEntry lEntry;
+    memcpy  (
+            &lEntry,
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(LeafEntry)),
+            sizeof(LeafEntry)
+            );
+
+    return lEntry;
+}
+
+void IndexManager::setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry)
+{
+    memcpy  (
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(LeafEntry)),
+            &lEntry,
+            sizeof(LeafEntry)
+            );
+}
 
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
         const Attribute &attribute,
