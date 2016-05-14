@@ -23,20 +23,15 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-<<<<<<< HEAD
 	int err;
 	
-	RecordBasedFileManager* rbfm = RecordBasedFileManager::instance();
-	err = rbfm->createFile(fileName);
+	err = _pf_manager->createFile(fileName);
 	if (err != 0)
 	{
 		return 1; //bad file creation;
 	}
 	
-	return -1;
-=======
-    _pf_manager->createFile(fileName);
->>>>>>> 353ded9914f41a097cd6d12808f65f82f97d88bf
+	return 0;
 }
 
 RC IndexManager::destroyFile(const string &fileName)
