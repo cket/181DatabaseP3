@@ -1,5 +1,6 @@
-
+#include "../rbf/pfm.h"
 #include "ix.h"
+#include <stdlib.h>
 
 IndexManager* IndexManager::_index_manager = 0;
 
@@ -13,6 +14,7 @@ IndexManager* IndexManager::instance()
 
 IndexManager::IndexManager()
 {
+    _pf_manager = PagedFileManager::instance();
 }
 
 IndexManager::~IndexManager()
@@ -21,6 +23,7 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
+<<<<<<< HEAD
 	int err;
 	
 	RecordBasedFileManager* rbfm = RecordBasedFileManager::instance();
@@ -31,26 +34,31 @@ RC IndexManager::createFile(const string &fileName)
 	}
 	
 	return -1;
+=======
+    _pf_manager->createFile(fileName);
+>>>>>>> 353ded9914f41a097cd6d12808f65f82f97d88bf
 }
 
 RC IndexManager::destroyFile(const string &fileName)
 {
-    return -1;
+    _pf_manager->destroyFile(fileName);
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle)
 {
-    return -1;
+    _pf_manager->openFile(fileName, ixfileHandle);
 }
 
 RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 {
-    return -1;
+    _pf_manager->closeFile(ixfileHandle);
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-    return -1;
+    
+    num_entries = header.numEntries;
+    //ifiterate over entries
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
@@ -58,6 +66,113 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     return -1;
 }
 
+void* IndexManager::search(void* value, const Attribute &attribute, int nodeNum=0)
+{
+    // https://en.wikipedia.org/wiki/B%2B_tree#Search
+    void * node = malloc(PAGE_SIZE);
+    //always start at root!
+    ixfileHandle.readPage(nodeNum, node); 
+
+    NodeHeader header = getNodeHeader(node);
+    if(header.isLeaf){
+        return node;
+    }
+    //not leaf so we need to find what node to find next 
+    for(int i = 0; i < header.numEntries; i++){
+        //will find all nodes iff value < max value on page
+        NonLeafEntry entry = getNonLeafEntry(node, i);
+        void * min_val = getValue(entry.offset);
+        if(compareVals(value, min_val, attribute) < 0){
+            return search(value, attribute, entry.lessThanNode)
+        }
+    }
+    //if we get here we know there is only one place to search
+    NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
+    return search(value, attribute, entry.greaterThanNode);
+}
+
+void* getValue(void * node, int offset, const Attribute &attribute)
+{
+    void * value;
+    int size = 0;
+    if(attribute.type != VarCharType){
+        size = sizeof(int);
+    }
+    //need to handle varchars still
+    value = malloc(size);
+    memcpy(value, node+offset, size);
+}
+
+int compareVals(void * val1, void * val2, const Attribute &attribute)
+{
+    if(attribute.type == IntType){
+        if(*(int*)val1 < *(int*)val2){
+            return -1;
+        }else if(*(int*)val1 > *(int*)val2){
+            return 1;
+        }else{
+            return 0;
+        }
+    }
+    if(attribute.type == FloatType){
+        if(*(float*)val1 < *(float*)val2){
+            return -1;
+        }else if(*(float*)val1 > *(float*)val2){
+            return 1;
+        }else{
+            return 0;
+        }
+    }
+    //if we get here we know its varchar type.
+}
+
+NodeHeader IndexManager::getNodeHeader(void * node)
+{
+    // Getting the slot directory header.
+    NodeHeader header;
+    memcpy (&header, node, sizeof(NodeHeader));
+    return header;
+}
+
+void IndexManager::setNodeHeader(NodeHeader header, void * node)
+{
+    memcpy (node, &header, sizeof(NodeHeader));
+}
+
+LeafEntry IndexManager::getLeafEntry(void * page, unsigned entryNumber)
+{
+    // Getting the slot directory entry data.
+    LeafEntry lEntry;
+    memcpy  (
+            &lEntry,
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(LeafEntry)),
+            sizeof(LeafEntry)
+            );
+
+    return lEntry;
+}
+
+void IndexManager::setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry)
+{
+    memcpy  (
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(LeafEntry)),
+            &lEntry,
+            sizeof(LeafEntry)
+            );
+}
+
+NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
+{
+    // Getting the slot directory entry data.
+    NonLeafEntry nEntry;
+    memcpy  (
+            &nEntry,
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(NonLeafEntry)),
+            sizeof(NonLeafEntry)
+            );
+
+    return nEntry;
+}
 
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
         const Attribute &attribute,

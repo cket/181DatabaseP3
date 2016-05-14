@@ -18,7 +18,8 @@ typedef struct NodeHeader
 typedef struct NonLeafEntry
 {
     int offset; //offset to value. can't store directly b/c don't know data type
-    int pageNum; //page is child node containing entries<value at offset
+    int lessThanNode; //page num to child node containing entries<value at offset
+    int greaterThanNode; //page num to child node containing entries>value at offset
 } NonLeafEntry;
 
 typedef struct LeafEntry
@@ -33,6 +34,7 @@ class IXFileHandle;
 class IndexManager {
 
     public:
+        PagedFileManager* _pf_manager;
         static IndexManager* instance();
 
         // Create an index file.
@@ -71,6 +73,10 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
+        NodeHeader getNodeHeader(void *page);
+        void setNodeHeader(NodeHeader header, void * page);
+        LeafEntry getLeafEntry(void * page, unsigned entryNumber);
+        void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
 };
 
 
@@ -92,8 +98,8 @@ class IX_ScanIterator {
 
 
 
-class IXFileHandle {
-    public:
+class IXFileHandle: public FileHandle {
+public:
 
     // variables to keep counter for each operation
     unsigned ixReadPageCounter;
