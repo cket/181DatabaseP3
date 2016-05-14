@@ -28,7 +28,7 @@ RC IndexManager::createFile(const string &fileName)
 	err = _pf_manager->createFile(fileName);
 	if (err != 0)
 	{
-		return 1; //bad file creation;
+		return 1; //bad pfm file creation;
 	}
 	
 	return 0;
@@ -36,17 +36,38 @@ RC IndexManager::createFile(const string &fileName)
 
 RC IndexManager::destroyFile(const string &fileName)
 {
-    _pf_manager->destroyFile(fileName);
+	int err;
+	err = _pf_manager->destroyFile(fileName);
+	if (err !- 0)
+	{
+		return 1; //bad pfm file destruction
+	}
+
+	return 0;
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle)
 {
-    _pf_manager->openFile(fileName, ixfileHandle);
+	int err;
+	err = _pf_manager->openFile(fileName, ixfileHandle);
+	if (err != 0)
+	{
+		return 1; //bad pfm file opening
+	}
+
+	return 0;
 }
 
 RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 {
-    _pf_manager->closeFile(ixfileHandle);
+	int err;
+	err = _pf_manager->closeFile(ixfileHandle);
+	if (err != 0)
+	{
+		return 1; //bad pfm file closing
+	}
+	
+	return 0;
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
