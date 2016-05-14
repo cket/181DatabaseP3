@@ -18,7 +18,8 @@ typedef struct NodeHeader
 typedef struct NonLeafEntry
 {
     int offset; //offset to value. can't store directly b/c don't know data type
-    int pageNum; //page is child node containing entries<value at offset
+    int lessThanNode; //page num to child node containing entries<value at offset
+    int greaterThanNode; //page num to child node containing entries>value at offset
 } NonLeafEntry;
 
 typedef struct LeafEntry
