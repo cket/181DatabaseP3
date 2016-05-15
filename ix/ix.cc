@@ -84,6 +84,8 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //we now have proper node. Search through sorted record & insert at proper location
     //get number of entries
     NodeHeader header = getNodeHeader(node);
+    int keySize = getKeySize(node, key, attribute);
+    int new_offset = header.freeSpaceOffset - keySize;
     //iterate over entriesTree
     for(int i = 0; i<header.numEntries; i++){
         LeafEntry entry = getLeafEntry(node, i);
@@ -101,12 +103,26 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         }
     }
 }
-
+int IndexManager::getKeySize(void *page, void * key, const Attribute &attribute)
+{
+    return -1;
+}
+int IndexManager::freeSpaceStart(void *page)
+{
+    NodeHeader header = getNodeHeader(node);
+    int length = header.numEntries;
+    int entry_size;
+    if(header.isLeaf){
+        entry_size = sizeof(LeafEntry);
+    }else{
+        entry_size = sizeof(NonLeafEntry);
+    }
+    return sizeof(NodeHeader) + entry_size*length;
+}
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
     return -1;
 }
-
 void IndexManager::moveEntries(void * page, int i, NodeHeader header)
 {
     //make space for new entry!
@@ -114,7 +130,7 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
     int desired_offset = current_offset + sizeof(LeafEntry);
     //how many entries after the current position we have to move
     int number_to_move = header.numEntries-i;
-    int size = number_to_move*sizeof(LeafEntry);
+    int size = number_to_move * sizeof(LeafEntry);
     memmove((char*)page+desired_offset, (char*)page+current_offset, size);
 
     //save entries new positions!
