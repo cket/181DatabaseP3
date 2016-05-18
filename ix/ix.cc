@@ -338,7 +338,8 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 
     /*
      * If this is the starting node, we're going to need to find the
-     * first appropriate node.
+     * first appropriate node. This logic tree gets a big convoluted
+     * because we repeat a bit based on inclusives or exclusives.
      */
     if(startFlag){
         int i;
@@ -347,12 +348,22 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
             void *entryValue = getValue(currentNode, leaf.offSet, attribute);
             // Double check me!
             // Remember to account for inclusives and exclusives!
-            if(compareVals(lowKey, entryValue, attribute) >= 0){
-                // Got our first value!
-                // TODO: set return rid and key
-                // TODO: Another if is needed to check if the first value is below highKey
-                break;
+            if(lowKeyInclusive){
+                if(compareVals(lowKey, entryValue, attribute) >= 0){
+                    // Got our first value!
+                    // TODO: set return rid and key
+                    // TODO: Another if is needed to check if the first value is below highKey
+                    break;
+                }
+            } else{
+                if(compareVals(lowKey, entryValue, attribute) > 0){
+                    // Got our first value!
+                    // TODO: set return rid and key
+                    // TODO: Another if is needed to check if the first value is below highKey
+                    break;
+                }
             }
+            
         }
         currentEntryNumber = i;
         // If we're past the number of entries in the node, go to the next node
