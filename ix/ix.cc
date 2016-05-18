@@ -296,6 +296,9 @@ IXFileHandle::~IXFileHandle()
 
 RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount)
 {
-    return -1;
+    readPage = ixReadPageCounter;
+    writePageCount = ixWritePageCounter;
+    appendPageCount = ixAppendPageCounter;
+    return 0;
 }
 
