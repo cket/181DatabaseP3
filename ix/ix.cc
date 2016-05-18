@@ -123,6 +123,11 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 {
     return -1;
 }
+
+/*
+ * Move entries in the case where something needs to be inserted before it
+ * or an entry was deleted before.
+*/
 void IndexManager::moveEntries(void * page, int i, NodeHeader header)
 {
     //make space for new entry!
@@ -141,6 +146,10 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
     }
 }
 
+/*
+ * Search the index tree
+ * Given an attribute and value, return the leaf node (note: not entry!) corresponding to the keyed value
+*/
 void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum)
 {
     // https://en.wikipedia.org/wiki/B%2B_tree#Search
@@ -167,6 +176,10 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
     return searchTree(ixfileHandle, value, attribute, entry.greaterThanNode);
 }
 
+/*
+ * Get a value from a node given the node and the offset in bytes
+ * TODO: Handle VarChar
+*/
 void* getValue(void * node, int offset, const Attribute &attribute)
 {
     void * value;
@@ -179,6 +192,10 @@ void* getValue(void * node, int offset, const Attribute &attribute)
     memcpy(value, (char*)node+offset, size);
 }
 
+/*
+ * Compare two values given an attribute type
+ * TODO: Handle VarChar
+*/
 int compareVals(const void * val1, void * val2, const Attribute &attribute)
 {
     if(attribute.type == TypeInt){
@@ -202,7 +219,10 @@ int compareVals(const void * val1, void * val2, const Attribute &attribute)
     //if we get here we know its varchar type.
 }
 
-NodeHeader IndexManager::getNodeHeader(void * node)
+/*
+ * Get the header for a node (Note: not entry!)
+*/
+NodeHeader IndexManager::getNodeHeader(const void * node)
 {
     // Getting the slot directory header.
     NodeHeader header;
@@ -250,6 +270,11 @@ NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
     return nEntry;
 }
 
+/*
+ * Scan the BTree.
+ * This will be similar to our insert. Find the first val
+*/
+
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
         const Attribute &attribute,
         const void      *lowKey,
@@ -258,6 +283,27 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
+    // Grab the header node
+    void * node = searchTree(ixfileHandle, lowKey, attribute, 0);
+    NodeHeader header = getNodeHeader(node);
+    int keySize = getKeySize(node, key, attribute);
+    int new_offset = header.freeSpaceOffset - keySize;
+    //iterate over entriesTree
+    for(int i = 0; i<header.numEntries; i++){
+        LeafEntry entry = getLeafEntry(node, i);
+        void *val2 = getValue(node, entry.offSet, attribute);
+        //  compare value to entry
+        if(compareVals(key, val2, attribute) < 0){
+            //make space for new entry
+            moveEntries(node, i, header);
+            // insert at old entries offset
+            setLeafEntry(node, i, to_insert);
+            // update node header
+            header.numEntries++;
+            setNodeHeader(header, node);
+            return SUCCESS;
+        }
+    }
     return -1;
 }
 
@@ -274,6 +320,7 @@ IX_ScanIterator::~IX_ScanIterator()
 
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
+
     return -1;
 }
 
