@@ -230,11 +230,18 @@ NodeHeader IndexManager::getNodeHeader(const void * node)
     return header;
 }
 
+/*
+ * Set the node header for a given node
+*/
 void IndexManager::setNodeHeader(NodeHeader header, void * node)
 {
     memcpy (node, &header, sizeof(NodeHeader));
 }
 
+/*
+ * Given a page (node?) and the entry number on that page, get a leaf entry value
+ * Don't quite understand this one.
+ */
 LeafEntry IndexManager::getLeafEntry(void * page, unsigned entryNumber)
 {
     // Getting the slot directory entry data.
@@ -272,7 +279,9 @@ NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
 
 /*
  * Scan the BTree.
- * This will be similar to our insert. Find the first val
+ * Search for the first lowKey node. Then search for the last
+ * high key node. Attach these to the ScanIterator, which will handle
+ * actually returning the data.
 */
 
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
@@ -283,28 +292,14 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-    // Grab the header node
-    void * node = searchTree(ixfileHandle, lowKey, attribute, 0);
-    NodeHeader header = getNodeHeader(node);
-    int keySize = getKeySize(node, key, attribute);
-    int new_offset = header.freeSpaceOffset - keySize;
-    //iterate over entriesTree
-    for(int i = 0; i<header.numEntries; i++){
-        LeafEntry entry = getLeafEntry(node, i);
-        void *val2 = getValue(node, entry.offSet, attribute);
-        //  compare value to entry
-        if(compareVals(key, val2, attribute) < 0){
-            //make space for new entry
-            moveEntries(node, i, header);
-            // insert at old entries offset
-            setLeafEntry(node, i, to_insert);
-            // update node header
-            header.numEntries++;
-            setNodeHeader(header, node);
-            return SUCCESS;
-        }
-    }
-    return -1;
+    IX_ScanIterator iterator;
+    // Grab the start and end node
+    void *startNode = searchTree(ixfileHandle, lowKey, attribute, 0);
+    void *endNode = searchTree(ixfileHandle, highKey, attribute, 0);
+    iterator->startNode = startNode;
+    iterator->endNode = endNode;
+    ix_ScanIterator = iterator;
+    return 0;
 }
 
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
