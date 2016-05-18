@@ -16,6 +16,9 @@ typedef struct NodeHeader
     uint16_t numEntries;
     int freeSpaceOffset;
     bool isLeaf;
+    // We'll need the addresses of the previous and next node
+    void *nextNode;
+    void *previousNode;
 } NodeHeader;
 
 typedef struct NonLeafEntry
@@ -90,7 +93,15 @@ class IndexManager {
 
 class IX_ScanIterator {
     public:
-
+        void *currentNode;
+        void *endNode;
+        int startFlag;
+        bool lowKeyInclusive;
+        bool highKeyInclusive;
+        Attribute attribute;
+        void *lowKey;
+        void *highKey;
+        int currentEntryNumber;
 		// Constructor
         IX_ScanIterator();
 

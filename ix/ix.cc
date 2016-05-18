@@ -281,7 +281,8 @@ NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
  * Scan the BTree.
  * Search for the first lowKey node. Then search for the last
  * high key node. Attach these to the ScanIterator, which will handle
- * actually returning the data.
+ * actually returning the data. We're going to set a flag for the iterator
+ * to find the first matching corresponding entry.
 */
 
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
@@ -293,11 +294,16 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         IX_ScanIterator &ix_ScanIterator)
 {
     IX_ScanIterator iterator;
-    // Grab the start and end node
     void *startNode = searchTree(ixfileHandle, lowKey, attribute, 0);
     void *endNode = searchTree(ixfileHandle, highKey, attribute, 0);
-    iterator->startNode = startNode;
+    iterator->currentNode = startNode;
     iterator->endNode = endNode;
+    iterator->startFlag = 1;
+    iterator->attribute = attribute;
+    iterator->lowKeyInclusive = lowKeyInclusive;
+    iterator->highKeyInclusive = highKeyInclusive;
+    iterator->lowKey = lowKey;
+    iterator->highKey = highKey;
     ix_ScanIterator = iterator;
     return 0;
 }
@@ -307,16 +313,84 @@ void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attri
 
 IX_ScanIterator::IX_ScanIterator()
 {
+    startNode = NULL;
+    endNode = NULL;
+    startFlag = 0;
 }
 
 IX_ScanIterator::~IX_ScanIterator()
 {
+    startNode = NULL;
+    endNode = NULL;
 }
 
+/*
+ * Get the next entry
+ * Given a start node and an end node, point to the next entry matching the attribute
+ * Because we are accessing memory addresses, when the currentNode address matches the
+ * end node address, we've reached the final node.
+ */
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
+    NodeHeader header = getNodeHeader(currentNode);
+    // Is this the last node?
+    int lastNode = currentNode == endNode;
 
-    return -1;
+    /*
+     * If this is the starting node, we're going to need to find the
+     * first appropriate node.
+     */
+    if(startFlag){
+        int i;
+        for(i = 0; i < header.numEntries; i++){
+            LeafEntry leaf = getLeafEntry(currentNode, i);
+            void *entryValue = getValue(currentNode, leaf.offSet, attribute);
+            // Double check me!
+            // Remember to account for inclusives and exclusives!
+            if(compareVals(lowKey, entryValue, attribute) >= 0){
+                // Got our first value!
+                // TODO: set return rid and key
+                // TODO: Another if is needed to check if the first value is below highKey
+                break;
+            }
+        }
+        currentEntryNumber = i;
+        // If we're past the number of entries in the node, go to the next node
+        if(++currentEntryNumber == header.numEntries){
+            // If we're on the last node and our return values are null, we return EOF
+            if(lastNode && rid == NULL)
+                return IX_EOF;
+            currentEntryNumber = 0;
+            currentNode = currentNode->nextNode;
+        }
+        startFlag = 0;
+        return 0;
+    }
+    // Great, we already have our currentEntryNumber set with our current node.
+    LeafEntry leaf = getLeafEntry(currentNode, currentEntryNumber);
+    void *entryValue = getValue(currentNode, leaf.offSet, attribute);
+    if(highKeyInclusive){
+        if(compareVals(highKey, entryValue, attribute) <= 0){
+        //TODO: set return rid and key
+        } else{
+            return IX_EOF;
+        }
+    } else{
+        if(compareVals(highKey, entryValue, attribute) < 0){
+        //TODO: set return rid and key
+        } else{
+            return IX_EOF;
+        }
+    }
+    // iterate the currentEntryNumber
+    if(++currentEntryNumber == header.numEntries){
+        // If we're on the last node and our return values are null, we return EOF
+        if(lastNode && rid == NULL)
+            return IX_EOF;
+        currentEntryNumber = 0;
+        currentNode = currentNode->nextNode;
+    }
+    return 0;
 }
 
 RC IX_ScanIterator::close()
