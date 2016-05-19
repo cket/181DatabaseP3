@@ -313,14 +313,14 @@ void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attri
 
 IX_ScanIterator::IX_ScanIterator()
 {
-    startNode = NULL;
+    currentNode = NULL;
     endNode = NULL;
     startFlag = 0;
 }
 
 IX_ScanIterator::~IX_ScanIterator()
 {
-    startNode = NULL;
+    currentNode = NULL;
     endNode = NULL;
 }
 
@@ -332,6 +332,8 @@ IX_ScanIterator::~IX_ScanIterator()
  */
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
+    if(curentNode == NULL)
+        return IX_EOF;
     NodeHeader header = getNodeHeader(currentNode);
     // Is this the last node?
     int lastNode = currentNode == endNode;
@@ -340,6 +342,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
      * If this is the starting node, we're going to need to find the
      * first appropriate node. This logic tree gets a big convoluted
      * because we repeat a bit based on inclusives or exclusives.
+     * Probably could factor some of this code to be more efficient, but oh well
      */
     if(startFlag){
         int i;
@@ -350,16 +353,36 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
             // Remember to account for inclusives and exclusives!
             if(lowKeyInclusive){
                 if(compareVals(lowKey, entryValue, attribute) >= 0){
-                    // Got our first value!
-                    // TODO: set return rid and key
-                    // TODO: Another if is needed to check if the first value is below highKey
+                    if(highKeyInclusive){
+                        if(compareVals(highKey, entryValue, attribute) <= 0){
+                            // Great, got our first value
+                            rid = leaf.rid
+                            key = entryValue;
+                        }
+                    } else{
+                        if(compareVals(highKey, entryValue, attribute) < 0){
+                            // Great, got our first value
+                            rid = leaf.rid;
+                            key = entryValue;
+                        }
+                    }
                     break;
                 }
             } else{
                 if(compareVals(lowKey, entryValue, attribute) > 0){
-                    // Got our first value!
-                    // TODO: set return rid and key
-                    // TODO: Another if is needed to check if the first value is below highKey
+                    if(highKeyInclusive){
+                        if(compareVals(highKey, entryValue, attribute) <= 0){
+                            // Great, got our first value
+                            rid = leaf.rid
+                            key = entryValue;
+                        }
+                    } else{
+                        if(compareVals(highKey, entryValue, attribute) < 0){
+                            // Great, got our first value
+                            rid = leaf.rid;
+                            key = entryValue;
+                        }
+                    }
                     break;
                 }
             }
@@ -382,18 +405,21 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     void *entryValue = getValue(currentNode, leaf.offSet, attribute);
     if(highKeyInclusive){
         if(compareVals(highKey, entryValue, attribute) <= 0){
-        //TODO: set return rid and key
+            rid = leaf.rid
+            key = entryValue;
         } else{
             return IX_EOF;
         }
     } else{
         if(compareVals(highKey, entryValue, attribute) < 0){
-        //TODO: set return rid and key
+            rid = leaf.rid
+            key = entryValue;
         } else{
             return IX_EOF;
         }
     }
     // iterate the currentEntryNumber
+    // Could be a bug here with reaching the last value in a node
     if(++currentEntryNumber == header.numEntries){
         // If we're on the last node and our return values are null, we return EOF
         if(lastNode && rid == NULL)
@@ -406,7 +432,10 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 
 RC IX_ScanIterator::close()
 {
-    return -1;
+    currentNode = NULL;
+    endNode = NULL;
+    startFlag = 0;
+    return 0;
 }
 
 
