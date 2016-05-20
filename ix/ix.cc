@@ -183,7 +183,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 int IndexManager::getKeySize(void *page, const void * key, const Attribute &attribute)
 {
     if(attribute.type == TypeVarChar){
-        return -1;
+        int * strLen = (int*)malloc(sizeof(int));
+        memcpy(strLen, key, sizeof(int));
+        return *strLen;
     }
     return sizeof(int);
 }
