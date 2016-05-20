@@ -102,6 +102,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             return SUCCESS;
         }
     }
+    return 1;	//insert entry failed, fell through for loop.
 }
 int IndexManager::getKeySize(void *page, const void * key, const Attribute &attribute)
 {
@@ -390,7 +391,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         return IX_EOF;
     NodeHeader header = getNodeHeader(currentNode);	//PROBLEM - can't call getNodeHeader since it's a member of IndexManager not IX_ScanIterator
     // Is this the last node?
-    int lastNode = (currentNode == endNode);	
+    int lastNode = (currentNode == endNode);	//for clarity, should be bool	
 
     /*
      * If this is the starting node, we're going to need to find the
@@ -446,27 +447,27 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         // If we're past the number of entries in the node, go to the next node
         if(++currentEntryNumber == header.numEntries){
             // If we're on the last node and our return values are null, we return EOF
-            if(lastNode && rid == NULL)
+            if(lastNode && &rid == NULL)
                 return IX_EOF;
             currentEntryNumber = 0;
-            currentNode = currentNode->nextNode;
+            currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
         }
         startFlag = 0;
         return 0;
     }
     // Great, we already have our currentEntryNumber set with our current node.
-    LeafEntry leaf = getLeafEntry(currentNode, currentEntryNumber);
+    LeafEntry leaf = getLeafEntry(currentNode, currentEntryNumber);	//PROBLEM - can't use getLeafEntry, not a member function of IX_ScanIterator
     void *entryValue = getValue(currentNode, leaf.offSet, attribute);
     if(highKeyInclusive){
         if(compareVals(highKey, entryValue, attribute) <= 0){
-            rid = leaf.rid
+            rid = leaf.rid;
             key = entryValue;
         } else{
             return IX_EOF;
         }
     } else{
         if(compareVals(highKey, entryValue, attribute) < 0){
-            rid = leaf.rid
+            rid = leaf.rid;
             key = entryValue;
         } else{
             return IX_EOF;
@@ -476,10 +477,10 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     // Could be a bug here with reaching the last value in a node
     if(++currentEntryNumber == header.numEntries){
         // If we're on the last node and our return values are null, we return EOF
-        if(lastNode && rid == NULL)
+        if(lastNode && &rid == NULL)
             return IX_EOF;
         currentEntryNumber = 0;
-        currentNode = currentNode->nextNode;
+        currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
     }
     return 0;
 }
@@ -506,9 +507,10 @@ IXFileHandle::~IXFileHandle()
 
 RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount)
 {
-    readPage = ixReadPageCounter;
+    readPageCount = ixReadPageCounter;
     writePageCount = ixWritePageCounter;
     appendPageCount = ixAppendPageCounter;
+
     return 0;
 }
 
