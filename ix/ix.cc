@@ -110,7 +110,7 @@ int IndexManager::getKeySize(void *page, const void * key, const Attribute &attr
 }
 int IndexManager::freeSpaceStart(void *page)
 {
-    NodeHeader header = getNodeHeader(node);	//PROBLEM - where does node come from
+    NodeHeader header = getNodeHeader(page);
     int length = header.numEntries;
     int entry_size;
     if(header.isLeaf){
