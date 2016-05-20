@@ -2,7 +2,7 @@
 #include "../rbf/rbfm.h"
 #include "ix.h"
 #include <stdlib.h>
-
+#include <string.h>
 
 IndexManager* IndexManager::_index_manager = 0;
 
@@ -103,13 +103,13 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         }
     }
 }
-int IndexManager::getKeySize(void *page, void * key, const Attribute &attribute)
+int IndexManager::getKeySize(void *page, const void * key, const Attribute &attribute)
 {
     return -1;
 }
 int IndexManager::freeSpaceStart(void *page)
 {
-    NodeHeader header = getNodeHeader(node);
+    NodeHeader header = getNodeHeader(node);	//PROBLEM - where does node come from
     int length = header.numEntries;
     int entry_size;
     if(header.isLeaf){
@@ -178,7 +178,6 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
 
 /*
  * Get a value from a node given the node and the offset in bytes
- * TODO: Handle VarChar
 */
 void* getValue(void * node, int offset, const Attribute &attribute)
 {
@@ -187,14 +186,25 @@ void* getValue(void * node, int offset, const Attribute &attribute)
     if(attribute.type != TypeVarChar){
         size = sizeof(int);
     }
+    else
+    {
+	size = (int*)((char*)(node)+offset);
+    }
     //need to handle varchars still
     value = malloc(size);
-    memcpy(value, (char*)node+offset, size);
+    if (attribute.type != TypeVarChar)
+    {
+    	memcpy(value, (char*)node+offset, size);
+    }
+    else
+    {
+	memcpy(value, (char*)node+offset+sizeof(int), size);
+    }
+    return value;
 }
 
 /*
  * Compare two values given an attribute type
- * TODO: Handle VarChar
 */
 int compareVals(const void * val1, void * val2, const Attribute &attribute)
 {
@@ -217,6 +227,31 @@ int compareVals(const void * val1, void * val2, const Attribute &attribute)
         }
     }
     //if we get here we know its varchar type.
+    else
+    {
+        if(*(int*)val1 < *(int*)val2){
+		return -2;	//val1 shorter
+	}else if(*(int*)val1 > *(int*)val2){
+		return 2;	//val1 longer
+	else
+	{
+		int size = *(int*)val1;
+		int comparison = strncmp((char*)val1, (char*)val2, size);
+		if (comparison < 0)
+		{
+			return -1;	//val1 is "lower" in the alphabet
+		}
+		else if(comparison > 0)
+		{
+			return 1; 	//val1 is "higher" in the alphabet
+		} 
+		else if(comparison == 0)
+		{
+			return 0;	//val1 and val2 are the same.
+		}
+	}
+    }
+    return 3; //fell through entire function
 }
 
 /*

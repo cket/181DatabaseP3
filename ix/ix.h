@@ -87,7 +87,7 @@ class IndexManager {
         void * searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum=0);
         void moveEntries(void * page, int i, NodeHeader header);
         int freeSpaceStart(void *page);
-        int getKeySize(void * page, void * key, const Attribute &attribute);
+        int getKeySize(void * page, const void * key, const Attribute &attribute);
 };
 
 
