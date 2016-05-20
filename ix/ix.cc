@@ -29,12 +29,54 @@ RC IndexManager::createFile(const string &fileName)
 
 	//should create two pages - root and leaf
 	err = _pf_manager->createFile(fileName);
+    rootPage = malloc(PAGE_SIZE);
+    memset(rootPage, 0, PAGE_SIZE);
+
+    NodeHeader rootHeader = NodeHeader;
+
+    rootHeader.isLeaf = false;
+
+    rootHeader.freeSpaceOffset = PAGE_SIZE;
+
+    rootHeader.nextNode = NONODE;
+    rootHeader.previousNode = NONODE;
+
+    rootHeader.numEntries = 0;
+
+    setNodeHeader(rootHeader, rootPage);
+
+    FileHandle fh = FileHandle;
+    openFile(fileName, fh);
+
+    fh.appendPage(rootPage);
+
+    _pf_manager->appendPage
 	if (err != 0)
 	{
 		return 1; //bad pfm file creation;
 	}
 	
 	return 0;
+}
+
+RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, LeafEntry leafEntry, const void *key)
+{
+    NodeHeader leafHeader = NodeHeader;
+    int keySize = getKeySize(key)
+    leafHeader.freeSpaceOffset = PAGE_SIZE - keySize;
+    leafHeader.numEntries = 1;
+    leafHeader.isLeaf = true;
+    leafHeader.nextNode = NONODE;
+    leafHeader.previousNode = NONODE;
+
+    // leafEntry = 
+    leafPage = malloc(PAGE_SIZE);
+    memcpy((char*)leafPage+leafHeader.freeSpaceOffset, key, keySize);
+
+    memset(leafPage, 0, PAGE_SIZE);
+    setNodeHeader(leafHeader, leafPage);
+    setLeafEntry(leafPage, 1, LeafEntry);
+    ixfileHandle.appendPage(leafPage);
 }
 
 RC IndexManager::destroyFile(const string &fileName)
@@ -80,7 +122,14 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     LeafEntry to_insert = LeafEntry();
     to_insert.rid = rid;
 
-    void * node = searchTree(ixfileHandle, key, attribute, 0); //start search from root
+    //start search from root
+    void * node = searchTree(ixfileHandle, key, attribute, 0);
+
+    //tree was empty, search returned null
+    if(node == 0){
+
+    }
+
     //we now have proper node. Search through sorted record & insert at proper location
     //get number of entries
     NodeHeader header = getNodeHeader(node);
@@ -177,6 +226,10 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
         if(compareVals(value, min_val, attribute) < 0){
             return searchTree(ixfileHandle, value, attribute, entry.lessThanNode);
         }
+    }
+    //check base case
+    if(nodeNum==0 && header.numEntries==0){
+        return 0;
     }
     //if we get here we know there is only one place to search
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
@@ -456,7 +509,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
             if(lastNode && &rid == NULL)
                 return IX_EOF;
             currentEntryNumber = 0;
-            currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
+            // currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
         }
         startFlag = 0;
         return 0;
@@ -486,7 +539,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         if(lastNode && &rid == NULL)
             return IX_EOF;
         currentEntryNumber = 0;
-        currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
+        // currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
     }
     return 0;
 }

@@ -8,6 +8,8 @@
 
 # define IX_EOF (-1)  // end of the index scan
 
+#define NONODE (-1)
+
 void* getValue(void * node, int offset, const Attribute &attribute);
 int compareVals(const void * val1, void * val2, const Attribute &attribute);
 
@@ -17,8 +19,8 @@ typedef struct NodeHeader
     int freeSpaceOffset;
     bool isLeaf;
     // We'll need the addresses of the previous and next node
-    void *nextNode;
-    void *previousNode;
+    int nextNode;
+    int previousNode;
 } NodeHeader;
 
 typedef struct NonLeafEntry
@@ -79,6 +81,7 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
+        RC IndexManager::createLeaf(IXFileHandle &ixfileHandle);
         void setNodeHeader(NodeHeader header, void * page);
         NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
