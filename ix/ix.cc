@@ -59,9 +59,12 @@ RC IndexManager::createFile(const string &fileName)
 	return 0;
 }
 
-RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, LeafEntry leafEntry, const void *key)
+/*
+ * Create a leaf node with an initial value in it
+ */
+RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const void *key, unsigned &pageNumber)
 {
-    NodeHeader leafHeader = NodeHeader;
+    NodeHeader leafHeader;
     int keySize = getKeySize(key)
     leafHeader.freeSpaceOffset = PAGE_SIZE - keySize;
     leafHeader.numEntries = 1;
@@ -69,14 +72,16 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, LeafEntry leafEntry, con
     leafHeader.nextNode = NONODE;
     leafHeader.previousNode = NONODE;
 
-    // leafEntry = 
     leafPage = malloc(PAGE_SIZE);
-    memcpy((char*)leafPage+leafHeader.freeSpaceOffset, key, keySize);
-
     memset(leafPage, 0, PAGE_SIZE);
+    memcpy((char*)leafPage+leafHeader.freeSpaceOffset, key, keySize);
     setNodeHeader(leafHeader, leafPage);
-    setLeafEntry(leafPage, 1, LeafEntry);
+    LeafEntry entry;
+    entry.rid = rid;
+    entry.offset = leafHeader.freeSpaceOffset;
+    setLeafEntry(leafPage, 1, entry);
     ixfileHandle.appendPage(leafPage);
+    pageNumber = ixfileHandle.getNumberOfPages();
 }
 
 RC IndexManager::destroyFile(const string &fileName)
@@ -87,7 +92,6 @@ RC IndexManager::destroyFile(const string &fileName)
 	{
 		return 1; //bad pfm file destruction
 	}
-
 	return 0;
 }
 
@@ -117,18 +121,38 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-    //DOES NOT HANDLE FULL NODES
+    // DOES NOT HANDLE FULL NODES
     // still needs to handle insertion of key into page & decrement freeSpace offset
-    LeafEntry to_insert = LeafEntry();
+    LeafEntry to_insert;
     to_insert.rid = rid;
 
     //start search from root
     void * node = searchTree(ixfileHandle, key, attribute, 0);
 
     //tree was empty, search returned null
+    /*
+     * So the tree currently has no leaves, and we can presume that the root is empty.
+     * Lets add our first leaf.
+     */
     if(node == 0){
-
+        unsigned newPageNumber;
+        createLeaf(ixfileHandle, rid, key, newPageNumber);
+        void * root = malloc(PAGE_SIZE);
+        memset(root, 0, PAGE_SIZE);
+        // The first page is the root node
+        ixfileHandle.readPage(0, root);
+        NonLeafEntry entry;
+        entry.offset = PAGE_SIZE - sizeof(key);
+        entry.greaterThanNode = newPageNumber;
+        NodeHeader header = getNodeHeader(root);
+        header.numEntries += 1;
+        header.freeSpaceOffset -= sizeof(key);
+        setNonLeafEntry(root, 0, entry)
+        ixfileHandle.writePage(0, root);
+        return
     }
+
+
 
     //we now have proper node. Search through sorted record & insert at proper location
     //get number of entries
@@ -206,8 +230,9 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
  * Search the index tree
  * Given an attribute and value, return the leaf node (note: not entry!) corresponding to the keyed value
 */
-void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum)
+void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum, unsigned &parentNodeNumber)
 {
+    // TODO: parentNodeNumber
     // https://en.wikipedia.org/wiki/B%2B_tree#Search
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
@@ -372,6 +397,15 @@ NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
     return nEntry;
 }
 
+void IndexManager::setNonLeafEntry(void * page, unsigned entryNumber, NonLeafEntry nEntry)
+{
+    memcpy  (
+            ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(NonLeafEntry)),
+            &nEntry,
+            sizeof(NonLeafEntry)
+            );
+}
+
 /*
  * Scan the BTree.
  * Search for the first lowKey node. Then search for the last
@@ -457,6 +491,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
      * first appropriate node. This logic tree gets a big convoluted
      * because we repeat a bit based on inclusives or exclusives.
      * Probably could factor some of this code to be more efficient, but oh well
+     * TODO: Get next leaf using integer, not pointer
      */
     if(startFlag){
         int i;
