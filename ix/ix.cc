@@ -251,7 +251,7 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
 			}
 		}
 	    }
-	    return 3; //fell through entire function
+	    //return 3; //fell through entire function
 	}
 
 	/*
@@ -386,11 +386,11 @@ IX_ScanIterator::~IX_ScanIterator()
  */
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
-    if(curentNode == NULL)
+    if(currentNode == NULL)
         return IX_EOF;
-    NodeHeader header = getNodeHeader(currentNode);
+    NodeHeader header = getNodeHeader(currentNode);	//PROBLEM - can't call getNodeHeader since it's a member of IndexManager not IX_ScanIterator
     // Is this the last node?
-    int lastNode = currentNode == endNode;
+    int lastNode = (currentNode == endNode);	
 
     /*
      * If this is the starting node, we're going to need to find the
@@ -401,7 +401,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     if(startFlag){
         int i;
         for(i = 0; i < header.numEntries; i++){
-            LeafEntry leaf = getLeafEntry(currentNode, i);
+            LeafEntry leaf = getLeafEntry(currentNode, i);	//PROBLEM - can't call getLeafEntry since it's a member of IndexManager not IX_ScanIterator
             void *entryValue = getValue(currentNode, leaf.offSet, attribute);
             // Double check me!
             // Remember to account for inclusives and exclusives!
@@ -410,7 +410,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
                     if(highKeyInclusive){
                         if(compareVals(highKey, entryValue, attribute) <= 0){
                             // Great, got our first value
-                            rid = leaf.rid
+                            rid = leaf.rid;
                             key = entryValue;
                         }
                     } else{
@@ -427,7 +427,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
                     if(highKeyInclusive){
                         if(compareVals(highKey, entryValue, attribute) <= 0){
                             // Great, got our first value
-                            rid = leaf.rid
+                            rid = leaf.rid;
                             key = entryValue;
                         }
                     } else{
