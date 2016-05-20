@@ -86,12 +86,15 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     NodeHeader header = getNodeHeader(node);
     int keySize = getKeySize(node, key, attribute);
     int new_offset = header.freeSpaceOffset - keySize;
+    to_insert.offSet = new_offset;
+
     //iterate over entriesTree
     for(int i = 0; i<header.numEntries; i++){
         LeafEntry entry = getLeafEntry(node, i);
         void *val2 = getValue(node, entry.offSet, attribute);
         //  compare value to entry
         if(compareVals(key, val2, attribute) < 0){
+            memcpy((char*)node+new_offset, key, keySize);
             //make space for new entry
             moveEntries(node, i, header);
             // insert at old entries offset
@@ -106,7 +109,10 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 }
 int IndexManager::getKeySize(void *page, const void * key, const Attribute &attribute)
 {
-    return -1;
+    if(attribute.type == TypeVarChar){
+        return -1;
+    }
+    return sizeof(int);
 }
 int IndexManager::freeSpaceStart(void *page)
 {
