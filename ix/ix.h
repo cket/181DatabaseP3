@@ -79,9 +79,7 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
-        NodeHeader getNodeHeader(const void *node);
         void setNodeHeader(NodeHeader header, void * page);
-        LeafEntry getLeafEntry(void * page, unsigned entryNumber);
         NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
         void * searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum=0);
@@ -89,6 +87,10 @@ class IndexManager {
         int freeSpaceStart(void *page);
         int getKeySize(void * page, const void * key, const Attribute &attribute);
 };
+
+//We want to use these functions in scan iterator and they don't require any specific members of IndexManager, so I moved them outside
+        NodeHeader getNodeHeader(const void *node);
+        LeafEntry getLeafEntry(void * page, unsigned entryNumber);
 
 
 class IX_ScanIterator {

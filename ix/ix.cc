@@ -141,7 +141,7 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
 
     //save entries new positions!
     for(int j = i; j < header.numEntries; j++){
-        LeafEntry entry = _index_manager->getLeafEntry(page, i);
+        LeafEntry entry = getLeafEntry(page, i);	//removed _index_manager after moving getLeafEntry out of the class
         entry.offSet += sizeof(LeafEntry);
         setLeafEntry(page, j, entry);
     }
@@ -255,10 +255,10 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
 	    //return 3; //fell through entire function
 	}
 
-	/*
-	 * Get the header for a node (Note: not entry!)
-	*/
-	NodeHeader IndexManager::getNodeHeader(const void * node)
+/*
+ * Get the header for a node (Note: not entry!)
+*/
+NodeHeader getNodeHeader(const void * node)
 {
     // Getting the slot directory header.
     NodeHeader header;
@@ -278,7 +278,7 @@ void IndexManager::setNodeHeader(NodeHeader header, void * node)
  * Given a page (node?) and the entry number on that page, get a leaf entry value
  * Don't quite understand this one.
  */
-LeafEntry IndexManager::getLeafEntry(void * page, unsigned entryNumber)
+LeafEntry getLeafEntry(void * page, unsigned entryNumber)
 {
     // Getting the slot directory entry data.
     LeafEntry lEntry;
@@ -389,7 +389,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
     if(currentNode == NULL)
         return IX_EOF;
-    NodeHeader header = getNodeHeader(currentNode);	//PROBLEM - can't call getNodeHeader since it's a member of IndexManager not IX_ScanIterator
+    NodeHeader header = getNodeHeader(currentNode);	
     // Is this the last node?
     int lastNode = (currentNode == endNode);	//for clarity, should be bool	
 
@@ -402,7 +402,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     if(startFlag){
         int i;
         for(i = 0; i < header.numEntries; i++){
-            LeafEntry leaf = getLeafEntry(currentNode, i);	//PROBLEM - can't call getLeafEntry since it's a member of IndexManager not IX_ScanIterator
+            LeafEntry leaf = getLeafEntry(currentNode, i);	
             void *entryValue = getValue(currentNode, leaf.offSet, attribute);
             // Double check me!
             // Remember to account for inclusives and exclusives!
@@ -456,7 +456,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         return 0;
     }
     // Great, we already have our currentEntryNumber set with our current node.
-    LeafEntry leaf = getLeafEntry(currentNode, currentEntryNumber);	//PROBLEM - can't use getLeafEntry, not a member function of IX_ScanIterator
+    LeafEntry leaf = getLeafEntry(currentNode, currentEntryNumber);	
     void *entryValue = getValue(currentNode, leaf.offSet, attribute);
     if(highKeyInclusive){
         if(compareVals(highKey, entryValue, attribute) <= 0){
