@@ -456,7 +456,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
             if(lastNode && &rid == NULL)
                 return IX_EOF;
             currentEntryNumber = 0;
-            // currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
+            currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
         }
         startFlag = 0;
         return 0;
@@ -486,7 +486,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         if(lastNode && &rid == NULL)
             return IX_EOF;
         currentEntryNumber = 0;
-        // currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
+        currentNode = currentNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
     }
     return 0;
 }
