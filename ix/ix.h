@@ -79,7 +79,7 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
-        NodeHeader getNodeHeader(void *page);
+        NodeHeader getNodeHeader(const void *node);
         void setNodeHeader(NodeHeader header, void * page);
         LeafEntry getLeafEntry(void * page, unsigned entryNumber);
         NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);

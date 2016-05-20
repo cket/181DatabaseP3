@@ -179,85 +179,85 @@ void* IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, co
 /*
  * Get a value from a node given the node and the offset in bytes
 */
-void* getValue(void * node, int offset, const Attribute &attribute)
-{
-    void * value;
-    int size = 0;
-    if(attribute.type != TypeVarChar){
-        size = sizeof(int);
-    }
-    else
-    {
-	size = (int*)((char*)(node)+offset);
-    }
-    //need to handle varchars still
-    value = malloc(size);
-    if (attribute.type != TypeVarChar)
-    {
-    	memcpy(value, (char*)node+offset, size);
-    }
-    else
-    {
-	memcpy(value, (char*)node+offset+sizeof(int), size);
-    }
-    return value;
-}
-
-/*
- * Compare two values given an attribute type
-*/
-int compareVals(const void * val1, void * val2, const Attribute &attribute)
-{
-    if(attribute.type == TypeInt){
-        if(*(int*)val1 < *(int*)val2){
-            return -1;
-        }else if(*(int*)val1 > *(int*)val2){
-            return 1;
-        }else{
-            return 0;
-        }
-    }
-    if(attribute.type == TypeReal){
-        if(*(float*)val1 < *(float*)val2){
-            return -1;
-        }else if(*(float*)val1 > *(float*)val2){
-            return 1;
-        }else{
-            return 0;
-        }
-    }
-    //if we get here we know its varchar type.
-    else
-    {
-        if(*(int*)val1 < *(int*)val2){
-		return -2;	//val1 shorter
-	}else if(*(int*)val1 > *(int*)val2){
-		return 2;	//val1 longer
-	else
+	void* getValue(void * node, int offset, const Attribute &attribute)
 	{
-		int size = *(int*)val1;
-		int comparison = strncmp((char*)val1, (char*)val2, size);
-		if (comparison < 0)
-		{
-			return -1;	//val1 is "lower" in the alphabet
-		}
-		else if(comparison > 0)
-		{
-			return 1; 	//val1 is "higher" in the alphabet
-		} 
-		else if(comparison == 0)
-		{
-			return 0;	//val1 and val2 are the same.
-		}
+	    void * value;
+	    int size = 0;
+	    if(attribute.type != TypeVarChar){
+		size = sizeof(int);
+	    }
+	    else
+	    {
+		size = *(int*)((char*)(node)+offset);
+	    }
+	    //need to handle varchars still
+	    value = malloc(size);
+	    if (attribute.type != TypeVarChar)
+	    {
+		memcpy(value, (char*)node+offset, size);
+	    }
+	    else
+	    {
+		memcpy(value, (char*)node+offset+sizeof(int), size);
+	    }
+	    return value;
 	}
-    }
-    return 3; //fell through entire function
-}
 
-/*
- * Get the header for a node (Note: not entry!)
-*/
-NodeHeader IndexManager::getNodeHeader(const void * node)
+	/*
+	 * Compare two values given an attribute type
+	*/
+	int compareVals(const void * val1, void * val2, const Attribute &attribute)
+	{
+	    if(attribute.type == TypeInt){
+		if(*(int*)val1 < *(int*)val2){
+		    return -1;
+		}else if(*(int*)val1 > *(int*)val2){
+		    return 1;
+		}else{
+		    return 0;
+		}
+	    }
+	    if(attribute.type == TypeReal){
+		if(*(float*)val1 < *(float*)val2){
+		    return -1;
+		}else if(*(float*)val1 > *(float*)val2){
+		    return 1;
+		}else{
+		    return 0;
+		}
+	    }
+	    //if we get here we know its varchar type.
+	    else
+	    {
+		if(*(int*)val1 < *(int*)val2){
+			return -2;	//val1 shorter
+		}else if(*(int*)val1 > *(int*)val2){
+			return 2;	//val1 longer
+		}else
+		{
+			int size = *(int*)val1;
+			int comparison = strncmp((char*)val1, (char*)val2, size);
+			if (comparison < 0)
+			{
+				return -1;	//val1 is "lower" in the alphabet
+			}
+			else if(comparison > 0)
+			{
+				return 1; 	//val1 is "higher" in the alphabet
+			} 
+			else if(comparison == 0)
+			{
+				return 0;	//val1 and val2 are the same.
+			}
+		}
+	    }
+	    return 3; //fell through entire function
+	}
+
+	/*
+	 * Get the header for a node (Note: not entry!)
+	*/
+	NodeHeader IndexManager::getNodeHeader(const void * node)
 {
     // Getting the slot directory header.
     NodeHeader header;
@@ -328,7 +328,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-    IX_ScanIterator iterator;
+    IX_ScanIterator* iterator;
     void *startNode = searchTree(ixfileHandle, lowKey, attribute, 0);
     void *endNode = searchTree(ixfileHandle, highKey, attribute, 0);
     iterator->currentNode = startNode;
@@ -337,9 +337,28 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
     iterator->attribute = attribute;
     iterator->lowKeyInclusive = lowKeyInclusive;
     iterator->highKeyInclusive = highKeyInclusive;
-    iterator->lowKey = lowKey;
-    iterator->highKey = highKey;
-    ix_ScanIterator = iterator;
+    //iterator->lowKey = lowKey;	//need to memcpy
+    int size;
+	if (attribute.type != TypeVarChar)
+	{
+		size = sizeof(int);
+	}
+	else
+	{
+		size = sizeof(int) + *(int*)lowKey;
+	}
+	memcpy(iterator->lowKey, lowKey, size);
+    //iterator->highKey = highKey;//need to memcpy 
+	if (attribute.type != TypeVarChar)
+	{
+		size = sizeof(int);
+	}
+	else
+	{
+		size = sizeof(int) + *(int*)highKey;
+	}
+	memcpy(iterator->highKey, highKey, size);
+    ix_ScanIterator = *iterator;
     return 0;
 }
 
