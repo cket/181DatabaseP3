@@ -60,7 +60,7 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
     entry.offSet = leafHeader.freeSpaceOffset;
     setLeafEntry(leafPage, 1, entry);
     ixfileHandle.appendPage(leafPage);
-    pageNumber = ixfileHandle.getNumberOfPages();
+    pageNumber = ixfileHandle.getNumberOfPages()-1;
 }
 
 RC IndexManager::destroyFile(const string &fileName)
@@ -140,8 +140,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 
         int keySize = getKeySize(key, attribute);
         entry.offset = PAGE_SIZE - keySize;
-        memcpy((char*)node+entry.offset, key, keySize);
+        memcpy((char*)root+entry.offset, key, keySize);
         entry.greaterThanNode = newPageNumber;
+        entry.lessThanNode = NONODE;
         NodeHeader header = getNodeHeader(root);
         header.numEntries += 1;
         header.freeSpaceOffset -= keySize;
@@ -228,6 +229,7 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         }
     }
     ixfileHandle.writePage(nodeNum, node);
+    return 0;
 }
 
 /*
@@ -301,11 +303,6 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
         if(compareVals(value, min_val, attribute) < 0){
             return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
         }
-    }
-    cout << "searchTree 2.1" << endl;
-    //check base case
-    if(nodeNum==0 && header.numEntries==0){
-        return 0;
     }
     //if we get here we know there is only one place to search
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
@@ -477,13 +474,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-<<<<<<< HEAD
     unsigned * parentNum;
-=======
-    IX_ScanIterator* iterator = (IX_ScanIterator *)malloc(sizeof(IX_ScanIterator));
-
-    unsigned* parentNum = (unsigned*)malloc(sizeof(int));
->>>>>>> 7ed3c4630d621d543be6d6150b46fff72a294d08
 
     cout << "scan: 1" << endl;
     int nodeNum = searchTree(ixfileHandle, lowKey, attribute, 0, *parentNum);
