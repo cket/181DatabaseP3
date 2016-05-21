@@ -58,7 +58,7 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
     LeafEntry entry;
     entry.rid = rid;
     entry.offSet = leafHeader.freeSpaceOffset;
-    setLeafEntry(leafPage, 1, entry);
+    setLeafEntry(leafPage, 0, entry);
     ixfileHandle.appendPage(leafPage);
     pageNumber = ixfileHandle.getNumberOfPages()-1;
 }
@@ -100,6 +100,7 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
+    cout << endl <<"number of pages : " << ixfileHandle.getNumberOfPages()<<endl;
     // DOES NOT HANDLE FULL NODES
     // still needs to handle insertion of key into page & decrement freeSpace offset
     LeafEntry to_insert;
@@ -117,7 +118,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
      * So the tree currently has no leaves, and we can presume that the tree is empty.
      * Lets add our first leaf.
      */
-    if(nodeNum == -1){
+    if(nodeNum == NONODE){
         cout << "First insertion - building tree" <<endl;
         void * rootPage = malloc(PAGE_SIZE);
         memset(rootPage, 0, PAGE_SIZE);
@@ -150,16 +151,62 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         setNonLeafEntry(root, 0, entry);
         ixfileHandle.writePage(0, root);
         return 0;
-    }else{
-        cout << "Existing Tree" <<endl;
-        ixfileHandle.readPage(nodeNum, node);
     }
+    if(nodeNum == NEWLESSTHANNODE){
+        unsigned newPageNumber;
+        createLeaf(ixfileHandle, rid, key, newPageNumber, attribute);
+        //now point the parent at the new leaf
+        void * parentNode = malloc(PAGE_SIZE);
+        memset(parentNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage((int)*parentNum, parentNode);
+        NonLeafEntry nle = getNonLeafEntry(parentNode, 0);//we know its the leftmost/smallest entry
+        nle.lessThanNode = (int)newPageNumber;
+        setNonLeafEntry(parentNode, 0, nle);
+        //now point sibling nodes at each other
+        //first get right siblings nodenum
+        NonLeafEntry nler = getNonLeafEntry(parentNode, 1);
+        int rightNodeNum = nler.greaterThanNode;
+
+        //now load the nodes
+        void * leftNode = malloc(PAGE_SIZE);
+        memset(leftNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage((int)newPageNumber, leftNode);
+        void * rightNode = malloc(PAGE_SIZE);
+        memset(rightNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage(rightNodeNum, rightNode);
+        //get the headers
+        NodeHeader lh = getNodeHeader(leftNode);
+        NodeHeader rh = getNodeHeader(rightNode);
+        //set the pointers :)
+        lh.nextNode = rightNodeNum;
+        rh.previousNode = (int)newPageNumber;
+        //write them back to page
+        setNodeHeader(lh, leftNode);
+        setNodeHeader(rh, rightNode);
+        //write to disk
+        ixfileHandle.writePage((int)*parentNum, parentNode);
+        ixfileHandle.writePage(rightNodeNum, rightNode);
+        ixfileHandle.writePage((int)newPageNumber, leftNode);
+        return SUCCESS;
+    }
+    cout << "Existing Tree" <<endl;
+    ixfileHandle.readPage(nodeNum, node);
 
     //we now have proper node. Search through sorted record & insert at proper location
     //get number of entries
     NodeHeader header = getNodeHeader(node);
     int keySize = getKeySize(key, attribute);
     int new_offset = header.freeSpaceOffset - keySize;
+    if(freeSpaceStart(node)+sizeof(LeafEntry) > new_offset){
+        cout << "WE have to split"<<endl;
+        //No space to insert. We have to split :(
+        // void * parentNode;
+
+        void * parentNode = malloc(PAGE_SIZE);
+        memset(parentNode, 0, PAGE_SIZE);
+        ixfileHandle.readPage(*parentNum, parentNode);
+
+    }
     to_insert.offSet = new_offset;
 
     //iterate over entriesTree
@@ -299,7 +346,11 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
         NonLeafEntry entry = getNonLeafEntry(node, i);
         void * min_val = getValue(node, entry.offset, attribute);
         if(compareVals(value, min_val, attribute) < 0){
-            return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
+            if(entry.lessThanNode != NONODE){
+                return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
+            }else{
+                return NEWLESSTHANNODE;
+            }
         }
     }
     //if we get here we know there is only one place to search
