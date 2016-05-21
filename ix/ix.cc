@@ -60,7 +60,7 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
     entry.offSet = leafHeader.freeSpaceOffset;
     setLeafEntry(leafPage, 1, entry);
     ixfileHandle.appendPage(leafPage);
-    pageNumber = ixfileHandle.getNumberOfPages();
+    pageNumber = ixfileHandle.getNumberOfPages()-1;
 }
 
 RC IndexManager::destroyFile(const string &fileName)
