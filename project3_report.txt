@@ -1,27 +1,30 @@
 1. Basic information
-Team number (e.g., 01) : 
-#1 Submitter ID : 
-#1 Student Name : 
+Team number (e.g., 01) : 5
+#1 Submitter ID : 1406976
+#1 Student Name : Ankur Goswani
 
-#2 Team Member ID: 
-#2 Student Name:
+#2 Team Member ID: 1438051 
+#2 Student Name: Gage Sperry
 
-#3 Team Member ID:
-#3 Student Name:
+#3 Team Member ID: 1356910
+#3 Student Name: Christopher Ketchum
 
 2. Index Entry Format
 - Show your index entry design (structure). 
 
+internal entries contain: offset from end of page, numbers of the deeper pages containing the values less than that key and the values greater than or equal to that key
+leaf entries contain: offset from end of page, rid.
 
 3. Page Format
 - Show your internal-page (non-leaf node) design.
+internal pages contain a header saying if it is a leaf page or not and the number of entries on the page. internal entries are then loaded in from the end of the page
 
 - Show your leaf-page (leaf node) design.
-
+leaf pages contain a header saying if it is a leaf page or not and the number of entries on the page. leaf entries are then loaded in from the end of the page
 
 4. Implementation Detail
 - Have you added your own source file (.cc or .h)?
-
+no
 
 - Other implementation details:
 
@@ -29,3 +32,4 @@ Team number (e.g., 01) :
 5. Other (optional)
 - Freely use this section to tell us about things that are related to the project 3, but not related to the other sections (optional)
 
+We tried our best to get it fully working. :)
