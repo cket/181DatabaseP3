@@ -278,6 +278,20 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         if(entry.rid.pageNum != rid.pageNum || entry.rid.slotNum != rid.slotNum){
             continue;
         }else{
+            //delete value at offset 
+            LeafEntry le = getLeafEntry(node, i);
+            int start = le.offSet;
+            int end = 0;
+            if(i==header.numEntries-1){
+                end = PAGE_SIZE;
+            }else{
+                LeafEntry le2 = getLeafEntry(node, i+1);
+                end = le2.offSet;
+            }
+            int size = end-start;
+            int amountToMove = header.freeSpaceOffset - start;
+            memmove((char*)node+header.freeSpaceOffset+size, (char*)node+header.freeSpaceOffset, amountToMove);
+            //delete entry
             deleteLeafEntry(node, i, header);
         }
     }
@@ -324,6 +338,7 @@ void IndexManager::deleteLeafEntry(void * page, int i, NodeHeader header)
         entry.offSet += sizeof(LeafEntry);
         setLeafEntry(page, j, entry);
     }
+    setNodeHeader(header, page);
 }
 
 /*
