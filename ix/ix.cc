@@ -29,7 +29,7 @@ RC IndexManager::createFile(const string &fileName)
 
 	//should create two pages - root and leaf
 	err = _pf_manager->createFile(fileName);
-    rootPage = malloc(PAGE_SIZE);
+    void* rootPage = malloc(PAGE_SIZE);
     memset(rootPage, 0, PAGE_SIZE);
 
     NodeHeader rootHeader = NodeHeader;
@@ -423,6 +423,74 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 }
 
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
+
+/*	{
+	"keys":["P"],
+	"children":[
+	 {"keys":["C","G","M"],
+	 "children": [
+	 {"keys": ["A:[(1,1),(1,2)]","B:[(2,1),(2,2)]"]},
+	 {"keys": ["D:[(3,1),(3,2)]","E:[(4,1)]","F:[(5,1)]"]},
+	 {"keys": ["J:[(5,1),(5,2)]","K:[(6,1),(6,2)]","L:[(7,1)]"]},
+	 {"keys": ["N:[(8,1)]","O:[(9,1)]"]}
+	 ]},
+	 {"keys":["T","X"],
+	 "children": [
+	 {"keys": ["Q:[(10,1)]","R:[(11,1)]","S:[(12,1)]"]},
+	 {"keys": ["U:[(13,1)]","V:[(14,1)]"]},
+	 {"keys": ["Y:[(15,1)]","Z:[(16,1)]"]}
+	 ]}
+	]
+	}*/
+		
+	//assume ixfileHandle is already open
+	
+
+	//recursive 
+	//	if non-leaf: 
+	//		print: {"keys": ["entry1", "entry2", "entry3"]
+	//	if leaf
+	//		print: {"keys": ["entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]"]
+	//	if not leaf
+	//		print: , \n "children": [ \n
+	//		loop i<(num pointers)
+	//			recur(i)
+	//	print: ]}
+	//	if more values at this level
+	//		print: ,
+
+	
+	printBtree(ixfileHandle, attribute);
+	
+
+}
+
+void printValue(void* data, const Attribute &attribute)
+{
+	
+	switch (attribute.type)
+	{
+		case TypeInt :
+		{
+			int valueI = *(int*)data;
+			count<<valueI;
+			break;
+		}
+		case TypeReal :
+		{
+			float valueF = *(float*)data;
+			cout<<valueF;
+			break; 
+		}
+		case TypeVarChar:
+		{
+			int size = *(int*)data;
+			string valueVC;
+			valueVC.assign((char*)data+sizeof(int), size);		
+			cout<<valueVC;
+			break;
+		}
+	}
 }
 
 IX_ScanIterator::IX_ScanIterator()

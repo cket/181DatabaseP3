@@ -73,7 +73,8 @@ class IndexManager {
                 IX_ScanIterator &ix_ScanIterator);
 
         // Print the B+ tree in pre-order (in a JSON record format)
-        void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;
+        void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;	//PROBLEM - when things explode, look here.
+	void printValue(void* data, const Attribute &attribute);
 
     protected:
         IndexManager();
