@@ -94,6 +94,8 @@ class IndexManager {
         int getKeySize(const void * key, const Attribute &attribute);
         RC createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const void *key, unsigned &pageNumber, const Attribute &attribute);
         void deleteLeafEntry(void * page, int i, NodeHeader header);
+        int getMostLeftLeafNumber(IXFileHandle &ixfileHandle);
+        int getMostRightLeafNumber(IXFileHandle &ixfileHandle);
 };
 
 //We want to use these functions in scan iterator and they don't require any specific members of IndexManager, so I moved them outside
@@ -103,11 +105,13 @@ class IndexManager {
 
 class IX_ScanIterator {
     public:
-        void *currentNode;
-        void *endNode;
+        IXFileHandle *ixfileHandle;
+        int currentNode; // page of the current node
+        int endNode; // page of the end node
         int startFlag;
         bool lowKeyInclusive;
         bool highKeyInclusive;
+        bool done;
         Attribute attribute;
         void *lowKey;
         void *highKey;

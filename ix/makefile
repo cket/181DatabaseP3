@@ -48,6 +48,8 @@ ixtest_15: ixtest_15.o libix.a $(CODEROOT)/rbf/librbf.a
 # dependencies to compile used libraries
 .PHONY: $(CODEROOT)/rbf/librbf.a
 $(CODEROOT)/rbf/librbf.a:
+	touch age_idx
+	rm age_idx
 	$(MAKE) -C $(CODEROOT)/rbf librbf.a
 
 .PHONY: clean
