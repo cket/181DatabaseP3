@@ -75,6 +75,7 @@ class IndexManager {
         // Print the B+ tree in pre-order (in a JSON record format)
         void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;	//PROBLEM - when things explode, look here.
 	void printValue(void* data, const Attribute &attribute) const;
+	void printRecur(IXFileHandle ixfileHandle, int pageNum, const Attribute& attribute) const;
 
     protected:
         IndexManager();
