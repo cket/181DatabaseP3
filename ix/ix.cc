@@ -205,7 +205,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         memset(parentNode, 0, PAGE_SIZE);
         ixfileHandle.readPage(*parentNum, parentNode);
 
-	void * newNode = malloc(PAGE_SIZE);
+	    void * newNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
         
 	int rightNum = node.greaterThanNode;
