@@ -611,7 +611,7 @@ void IndexManager::printRecur(IXFileHandle ixfileHandle, int pageNum, const Attr
 			cout<<": [";
 			//
 			cout<<"("<<entry.rid.pageNum<<","<<entry.rid.slotNum<<")";
-			if(header.numEntries != i)
+			if(header.numEntries -1 > i)
 			{
 				LeafEntry nextEntry = getLeafEntry(page, i + 1);
 				while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
