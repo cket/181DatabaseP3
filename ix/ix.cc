@@ -218,7 +218,28 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 	NodeHeader rightHeader = getNodeHeader(rightNode);
 	
 	LeafEntry bubbleEntry = getLeafEntry(node, header.numEntries/2);
-	NonLeafEntry
+	newHeader.previousNode = rightHeader.previousNode;
+	newHeader.nextNode = header.nextNode;
+	rightHeader.previousNode = ixfileHandle.getNumberOfPages()-1;
+	header.nextNode = ixfileHandle.getNumberOfPages()-1;
+	
+	NonLeafEntry bubEntry;
+	void * vKey = getValue(node, bubbleEntry.offSet, attribute);
+	bubEntry.offSet = parentHeader.freeSpaceOffset - getKeySize(vKey);
+	bubEntry.lessThanNode = newHeader.previousNode;
+	bubEntry.greaterThanNode = header.nextNode;
+	
+	for(int i = 0; i < parentHeader.numEntries; i++){
+		NonLeafEntry entry = getNonLeafEntry(parentNode, i);
+		void * eValue = getValue(parentNode, entry.offset, attribute);
+		if(compareVal(vKey, eValue, attribute) < 0){
+			moveNonLeafEntries(parentNode, i, parentHeader);
+			setNonLeafEntry(parentNode, i, bubEntry);
+			break;
+		}
+		
+	}
+	
 	for(int i = header.numEntries/2; i < header.numEntries; i++)
 	{
 		LeafEntry shiftEntry = getLeafEntry(node, i);
