@@ -100,8 +100,9 @@ class IndexManager {
 
 class IX_ScanIterator {
     public:
-        void *currentNode;
-        void *endNode;
+        IXFileHandle *ixfileHandle;
+        int currentNode; // page of the current node
+        int endNode; // page of the end node
         int startFlag;
         bool lowKeyInclusive;
         bool highKeyInclusive;
