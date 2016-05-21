@@ -207,18 +207,18 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 
 	void * newNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
-        //ixfileHandle.readPage(*newNum, newNode);
         
+	int rightNum = node.greaterThanNode;
 	void * rightNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
-        //ixfileHandle.readPage(*rightNum, rightNode);
+        ixfileHandle.readPage(rightNum, rightNode);
 
 	NodeHeader parentHeader = getNodeHeader(parentNode);
 	NodeHeader newHeader = getNodeHeader(newNode);
 	NodeHeader rightHeader = getNodeHeader(rightNode);
 	
 	LeafEntry bubbleEntry = getLeafEntry(node, header.numEntries/2);
-	NonLeafEntry bubEntry;
+	NonLeafEntry
 	for(int i = header.numEntries/2; i < header.numEntries; i++)
 	{
 		LeafEntry shiftEntry = getLeafEntry(node, i);
