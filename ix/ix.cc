@@ -106,7 +106,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     to_insert.rid = rid;
 
     //start search from root
-    unsigned* parentNum;
+    unsigned* parentNum = (unsigned*)malloc(sizeof(int));
     int nodeNum = searchTree(ixfileHandle, key, attribute, 0, *parentNum);
     cout << nodeNum <<endl;
     void * node = malloc(PAGE_SIZE);
@@ -118,6 +118,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
      * Lets add our first leaf.
      */
     if(nodeNum == -1){
+        cout << "First insertion - building tree" <<endl;
         void * rootPage = malloc(PAGE_SIZE);
         memset(rootPage, 0, PAGE_SIZE);
         NodeHeader rootHeader;
@@ -136,15 +137,20 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         // The first page is the root node
         ixfileHandle.readPage(0, root);
         NonLeafEntry entry;
-        entry.offset = PAGE_SIZE - sizeof(key);
+
+        int keySize = getKeySize(key, attribute);
+        entry.offset = PAGE_SIZE - keySize;
+        memcpy((char*)node+entry.offset, key, keySize);
         entry.greaterThanNode = newPageNumber;
         NodeHeader header = getNodeHeader(root);
         header.numEntries += 1;
-        header.freeSpaceOffset -= sizeof(key);
+        header.freeSpaceOffset -= keySize;
+        setNodeHeader(header, root);
         setNonLeafEntry(root, 0, entry);
         ixfileHandle.writePage(0, root);
         return 0;
     }else{
+        cout << "Existing Tree" <<endl;
         ixfileHandle.readPage(nodeNum, node);
     }
 
@@ -156,7 +162,10 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     to_insert.offSet = new_offset;
 
     //iterate over entriesTree
+    cout << "number entries " << header.numEntries << endl;
+    cout << "iterating. On entry number: ";
     for(int i = 0; i<header.numEntries; i++){
+        cout << i;
         LeafEntry entry = getLeafEntry(node, i);
         void *val2 = getValue(node, entry.offSet, attribute);
         //  compare value to entry
@@ -202,7 +211,7 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //start search from root
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
-    unsigned* parentNum;
+    unsigned* parentNum = (unsigned*)malloc(sizeof(int));
     int nodeNum = searchTree(ixfileHandle, key, attribute, 0, *parentNum);
 
     ixfileHandle.readPage(nodeNum, node);
@@ -468,7 +477,13 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
+<<<<<<< HEAD
     unsigned * parentNum;
+=======
+    IX_ScanIterator* iterator = (IX_ScanIterator *)malloc(sizeof(IX_ScanIterator));
+
+    unsigned* parentNum = (unsigned*)malloc(sizeof(int));
+>>>>>>> 7ed3c4630d621d543be6d6150b46fff72a294d08
 
     cout << "scan: 1" << endl;
     int nodeNum = searchTree(ixfileHandle, lowKey, attribute, 0, *parentNum);
