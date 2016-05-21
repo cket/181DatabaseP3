@@ -133,6 +133,10 @@ public:
     unsigned ixWritePageCounter;
     unsigned ixAppendPageCounter;
 
+    RC readPage(PageNum pageNum, void *data);
+    RC writePage(PageNum pageNum, const void *data);
+    RC appendPage(const void *data);
+
     // Constructor
     IXFileHandle();
 

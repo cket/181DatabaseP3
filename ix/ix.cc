@@ -108,6 +108,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //start search from root
     unsigned* parentNum;
     int nodeNum = searchTree(ixfileHandle, key, attribute, 0, *parentNum);
+    cout << nodeNum <<endl;
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
 
@@ -116,7 +117,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
      * So the tree currently has no leaves, and we can presume that the tree is empty.
      * Lets add our first leaf.
      */
-    if(node == 0){
+    if(nodeNum == -1){
         void * rootPage = malloc(PAGE_SIZE);
         memset(rootPage, 0, PAGE_SIZE);
         NodeHeader rootHeader;
@@ -142,7 +143,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         header.freeSpaceOffset -= sizeof(key);
         setNonLeafEntry(root, 0, entry);
         ixfileHandle.writePage(0, root);
-        return 1;
+        return 0;
     }else{
         ixfileHandle.readPage(nodeNum, node);
     }
@@ -267,8 +268,10 @@ void IndexManager::deleteLeafEntry(void * page, int i, NodeHeader header)
 */
 int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum, unsigned &parentNodeNumber)
 {
-    // TODO: parentNodeNumber
     // https://en.wikipedia.org/wiki/B%2B_tree#Search
+    if(ixfileHandle.getNumberOfPages() == 0){
+        return -1;
+    }
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
     //always start at root!
@@ -458,7 +461,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-    IX_ScanIterator* iterator;
+    IX_ScanIterator* iterator = (IX_ScanIterator *)malloc(sizeof(IX_ScanIterator));
 
     unsigned * parentNum;
 
@@ -471,6 +474,8 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
     void *endNode = malloc(PAGE_SIZE);
     memset(endNode, 0, PAGE_SIZE);
     ixfileHandle.readPage(nodeNum, endNode);
+
+    cout << "Hit" << endl;
 
     iterator->currentNode = startNode;
     iterator->endNode = endNode;
@@ -768,6 +773,24 @@ IXFileHandle::IXFileHandle()
 
 IXFileHandle::~IXFileHandle()
 {
+}
+
+RC IXFileHandle::readPage(PageNum pageNum, void *data){
+    FileHandle::readPage(pageNum, data);
+    ixReadPageCounter++;
+    return 0;
+}
+
+RC IXFileHandle::writePage(PageNum pageNum, const void *data){
+    FileHandle::writePage(pageNum, data);
+    ixWritePageCounter++;
+    return 0;
+}
+
+RC IXFileHandle::appendPage(const void *data){
+    FileHandle::appendPage(data);
+    ixAppendPageCounter++;
+    return 0;
 }
 
 RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount)
