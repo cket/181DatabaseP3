@@ -97,6 +97,7 @@ class IndexManager {
         void deleteLeafEntry(void * page, int i, NodeHeader header);
         int getMostLeftLeafNumber(IXFileHandle &ixfileHandle);
         int getMostRightLeafNumber(IXFileHandle &ixfileHandle);
+        RC deleteEntryOnPage(void * node, const RID &rid);
 };
 
 //We want to use these functions in scan iterator and they don't require any specific members of IndexManager, so I moved them outside

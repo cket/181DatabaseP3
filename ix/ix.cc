@@ -208,7 +208,8 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 	    void * newNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
         
-	int rightNum = node.greaterThanNode;
+
+	int rightNum = header.nextNode;
 	void * rightNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
         ixfileHandle.readPage(rightNum, rightNode);
@@ -225,14 +226,14 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 	
 	NonLeafEntry bubEntry;
 	void * vKey = getValue(node, bubbleEntry.offSet, attribute);
-	bubEntry.offSet = parentHeader.freeSpaceOffset - getKeySize(vKey);
+	bubEntry.offset = parentHeader.freeSpaceOffset - getKeySize(vKey, attribute);
 	bubEntry.lessThanNode = newHeader.previousNode;
 	bubEntry.greaterThanNode = header.nextNode;
 	
 	for(int i = 0; i < parentHeader.numEntries; i++){
 		NonLeafEntry entry = getNonLeafEntry(parentNode, i);
 		void * eValue = getValue(parentNode, entry.offset, attribute);
-		if(compareVal(vKey, eValue, attribute) < 0){
+		if(compareVals(vKey, eValue, attribute) < 0){
 			moveNonLeafEntries(parentNode, i, parentHeader);
 			setNonLeafEntry(parentNode, i, bubEntry);
 			break;
@@ -310,7 +311,17 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     int nodeNum = searchTree(ixfileHandle, key, attribute, 0, *parentNum);
 
     ixfileHandle.readPage(nodeNum, node);
+    int rc = deleteEntryOnPage(node, rid);
+    if(rc==-1){
+        return -1;
+    }
+    return ixfileHandle.writePage(nodeNum, node);
+}
 
+RC IndexManager::deleteEntryOnPage(void * node, const RID &rid)
+{
+    //deletes the entry on the page, moves subsequent entries into proper place, deletes the 
+    // corresponding key, and consolidates free space
     NodeHeader header = getNodeHeader(node);
     //iterate over entriesTree
     for(int i = 0; i<header.numEntries; i++){
@@ -334,10 +345,10 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             memmove((char*)node+header.freeSpaceOffset+size, (char*)node+header.freeSpaceOffset, amountToMove);
             //delete entry
             deleteLeafEntry(node, i, header);
+            return SUCCESS;
         }
     }
-    ixfileHandle.writePage(nodeNum, node);
-    return 0;
+    return -1;
 }
 
 /*
@@ -354,28 +365,22 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
     int size = number_to_move * sizeof(LeafEntry);
     memmove((char*)page+desired_offset, (char*)page+current_offset, size);
 
-    //save entries new positions!
-    for(int j = i; j < header.numEntries; j++){
-        LeafEntry entry = getLeafEntry(page, i);	//removed _index_manager after moving getLeafEntry out of the class
-        entry.offSet -= sizeof(LeafEntry);
-        setLeafEntry(page, j, entry);
-    }
 }
 
 void IndexManager::moveNonLeafEntries(void * page, int i, NodeHeader header)
 {
     //make space for new entry!
-    int current_offset = sizeof(NodeHeader) + sizeof(nonLeafEntry)*i;
-    int desired_offset = current_offset + sizeof(nonLeafEntry);
+    int current_offset = sizeof(NodeHeader) + sizeof(NonLeafEntry)*i;
+    int desired_offset = current_offset + sizeof(NonLeafEntry);
     //how many entries after the current position we have to move
     int number_to_move = header.numEntries-i;
-    int size = number_to_move * sizeof(nonLeafEntry);
+    int size = number_to_move * sizeof(NonLeafEntry);
     memmove((char*)page+desired_offset, (char*)page+current_offset, size);
 
     //save entries new positions!
     for(int j = i; j < header.numEntries; j++){
-        nonLeafEntry entry = getnonLeafEntry(page, i);    //removed _index_manager after moving getnonLeafEntry out of the class
-        entry.offSet -= sizeof(nonLeafEntry);
+        NonLeafEntry entry = getNonLeafEntry(page, i);    //removed _index_manager after moving getnonLeafEntry out of the class
+        entry.offset -= sizeof(NonLeafEntry);
         setNonLeafEntry(page, j, entry);
     }
 }
@@ -392,11 +397,6 @@ void IndexManager::deleteLeafEntry(void * page, int i, NodeHeader header)
 
     //save entries new positions!
     header.numEntries --;
-    for(int j = i; j < header.numEntries; j++){
-        LeafEntry entry = getLeafEntry(page, i);    //removed _index_manager after moving getLeafEntry out of the class
-        entry.offSet += sizeof(LeafEntry);
-        setLeafEntry(page, j, entry);
-    }
     setNodeHeader(header, page);
 }
 
@@ -414,17 +414,14 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
     memset(node, 0, PAGE_SIZE);
     //always start at root!
     ixfileHandle.readPage(nodeNum, node);
-    cout << "searchTree 1.0" << endl;
     NodeHeader header = getNodeHeader(node);
     if(header.isLeaf){
         return nodeNum;
     }
-    cout << "searchTree 2" << endl;
     parentNodeNumber = nodeNum;
     //not leaf so we need to find what node to find next 
     for(int i = 0; i < header.numEntries; i++){
         //will find all nodes iff value < max value on page
-        cout << "searchTree 2.01" << endl;
         NonLeafEntry entry = getNonLeafEntry(node, i);
         void * min_val = getValue(node, entry.offset, attribute);
         if(compareVals(value, min_val, attribute) < 0){
@@ -437,7 +434,6 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
     }
     //if we get here we know there is only one place to search
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
-    cout << "searchTree 3" << endl;
     return searchTree(ixfileHandle, value, attribute, entry.greaterThanNode, parentNodeNumber);
 }
 
@@ -514,7 +510,6 @@ int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
 */
 	void* getValue(void * node, int offset, const Attribute &attribute)
 	{
-        cout << "getValue 1" << endl;
 	    void * value;
 	    int size = 0;
 	    if(attribute.type != TypeVarChar){
@@ -534,7 +529,6 @@ int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
 	    {
 		memcpy(value, (char*)node+offset+sizeof(int), size);
 	    }
-        cout << "getValue 2" << endl;
 	    return value;
 	}
 
@@ -646,14 +640,12 @@ void IndexManager::setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEn
 NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber)
 {
     // Getting the slot directory entry data.
-    cout << "Get non leaf entry 1" << endl;
     NonLeafEntry nEntry;
     memcpy  (
             &nEntry,
             ((char*) page + sizeof(NodeHeader) + entryNumber * sizeof(NonLeafEntry)),
             sizeof(NonLeafEntry)
             );
-    cout << "Get non leaf entry 2" << endl;
     return nEntry;
 }
 
