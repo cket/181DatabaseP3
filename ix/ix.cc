@@ -58,7 +58,7 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
     LeafEntry entry;
     entry.rid = rid;
     entry.offSet = leafHeader.freeSpaceOffset;
-    setLeafEntry(leafPage, 1, entry);
+    setLeafEntry(leafPage, 0, entry);
     ixfileHandle.appendPage(leafPage);
     pageNumber = ixfileHandle.getNumberOfPages()-1;
 }
@@ -102,6 +102,7 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
+    cout << endl <<"number of pages : " << ixfileHandle.getNumberOfPages()<<endl;
     // DOES NOT HANDLE FULL NODES
     // still needs to handle insertion of key into page & decrement freeSpace offset
     LeafEntry to_insert;
@@ -119,7 +120,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
      * So the tree currently has no leaves, and we can presume that the tree is empty.
      * Lets add our first leaf.
      */
-    if(nodeNum == -1){
+    if(nodeNum == NONODE){
         cout << "First insertion - building tree" <<endl;
         void * rootPage = malloc(PAGE_SIZE);
         memset(rootPage, 0, PAGE_SIZE);
@@ -152,16 +153,61 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         setNonLeafEntry(root, 0, entry);
         ixfileHandle.writePage(0, root);
         return 0;
-    }else{
-        cout << "Existing Tree" <<endl;
-        ixfileHandle.readPage(nodeNum, node);
     }
+    if(nodeNum == NEWLESSTHANNODE){
+        unsigned newPageNumber;
+        createLeaf(ixfileHandle, rid, key, newPageNumber, attribute);
+        //now point the parent at the new leaf
+        void * parentNode = malloc(PAGE_SIZE);
+        memset(parentNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage((int)*parentNum, parentNode);
+        NonLeafEntry nle = getNonLeafEntry(parentNode, 0);//we know its the leftmost/smallest entry
+        nle.lessThanNode = (int)newPageNumber;
+        setNonLeafEntry(parentNode, 0, nle);
+        //now point sibling nodes at each other
+        //first get right siblings nodenum
+        int rightNodeNum = nle.greaterThanNode;
+
+        //now load the nodes
+        void * leftNode = malloc(PAGE_SIZE);
+        memset(leftNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage((int)newPageNumber, leftNode);
+        void * rightNode = malloc(PAGE_SIZE);
+        memset(rightNode, 0, PAGE_SIZE);        
+        ixfileHandle.readPage(rightNodeNum, rightNode);
+        //get the headers
+        NodeHeader lh = getNodeHeader(leftNode);
+        NodeHeader rh = getNodeHeader(rightNode);
+        //set the pointers :)
+        lh.nextNode = rightNodeNum;
+        rh.previousNode = (int)newPageNumber;
+        //write them back to page
+        setNodeHeader(lh, leftNode);
+        setNodeHeader(rh, rightNode);
+        //write to disk
+        ixfileHandle.writePage((int)*parentNum, parentNode);
+        ixfileHandle.writePage(rightNodeNum, rightNode);
+        ixfileHandle.writePage((int)newPageNumber, leftNode);
+        return SUCCESS;
+    }
+    cout << "Existing Tree" <<endl;
+    ixfileHandle.readPage(nodeNum, node);
 
     //we now have proper node. Search through sorted record & insert at proper location
     //get number of entries
     NodeHeader header = getNodeHeader(node);
     int keySize = getKeySize(key, attribute);
     int new_offset = header.freeSpaceOffset - keySize;
+    if(freeSpaceStart(node)+sizeof(LeafEntry) > new_offset){
+        cout << "WE have to split"<<endl;
+        //No space to insert. We have to split :(
+        // void * parentNode;
+
+        void * parentNode = malloc(PAGE_SIZE);
+        memset(parentNode, 0, PAGE_SIZE);
+        ixfileHandle.readPage(*parentNum, parentNode);
+
+    }
     to_insert.offSet = new_offset;
 
     //iterate over entriesTree
@@ -185,7 +231,14 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             return SUCCESS;
         }
     }
-    return 1;	//insert entry failed, fell through for loop.
+    memcpy((char*)node+new_offset, key, keySize);
+    // insert at old entries offset
+    setLeafEntry(node, header.numEntries, to_insert);
+    // update node header
+    header.numEntries++;
+    setNodeHeader(header, node);
+    ixfileHandle.writePage(nodeNum, node);
+    return SUCCESS;
 }
 
 int IndexManager::getKeySize(const void * key, const Attribute &attribute)
@@ -304,7 +357,11 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
         NonLeafEntry entry = getNonLeafEntry(node, i);
         void * min_val = getValue(node, entry.offset, attribute);
         if(compareVals(value, min_val, attribute) < 0){
-            return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
+            if(entry.lessThanNode != NONODE){
+                return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
+            }else{
+                return NEWLESSTHANNODE;
+            }
         }
     }
     //if we get here we know there is only one place to search
@@ -515,7 +572,7 @@ void IndexManager::setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEn
             );
 }
 
-NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
+NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber)
 {
     // Getting the slot directory entry data.
     cout << "Get non leaf entry 1" << endl;
@@ -550,7 +607,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         const Attribute &attribute,
         const void      *lowKey,
         const void      *highKey,
-        bool			lowKeyInclusive,
+        bool		lowKeyInclusive,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
@@ -619,6 +676,179 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 }
 
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
+
+		
+	static int depth = 0;	
+	void* page = malloc(PAGE_SIZE);
+	if(depth == 0)
+	{
+		ixfileHandle.readPage(0, page);
+	}
+    	NodeHeader header = getNodeHeader(page);
+    	if(header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+    		for(int i = 0; i<header.numEntries; i++)
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		LeafEntry entry = getLeafEntry(page, i);
+			printValue((char*)page+entry.offSet, attribute);
+			cout<<": [";
+			//
+			cout<<"("<<entry.rid.pageNum<<","<<entry.rid.slotNum<<")";
+			LeafEntry nextEntry = getLeafEntry(page, i + 1);
+			while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
+			{
+				cout<<"("<<nextEntry.rid.pageNum<<","<<nextEntry.rid.slotNum<<")";
+				i++;
+				nextEntry = getLeafEntry(page, i + 1);
+			}
+			cout<<"]";
+			//
+			cout<<"\"";
+			if (header.numEntries - 1 != i)
+			{
+				cout<<",";
+			}		
+		}
+		cout<<"]}";
+    	}
+	else if(!header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+		for (int i = 0; i < header.numEntries; i++ )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		NonLeafEntry entry = getNonLeafEntry(page, i);
+			printValue((void*)((char*)page+entry.offset), attribute);		
+			cout<<"\"";
+			if (header.numEntries - 1 != i)
+			{
+				cout<<",";
+			}		
+		}
+		cout<<"] , \n \"children\": [ \n";
+		depth++;
+		for (int i = 0; i < header.numEntries; i++ )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		NonLeafEntry entry = getNonLeafEntry(page, i);
+			if(entry.lessThanNode != -1)
+				printRecur(ixfileHandle, entry.lessThanNode, attribute);
+		}
+		NonLeafEntry entry = getNonLeafEntry(page, header.numEntries-1);
+		if(entry.greaterThanNode != -1)
+			printRecur(ixfileHandle, entry.greaterThanNode, attribute);
+		depth--;
+		cout<<"]} \n";	
+	}
+/*typedef struct NonLeafEntry
+{
+    int offset; //offset to value. can't store directly b/c don't know data type
+    int lessThanNode; //page num to child node containing entries<value at offset
+    int greaterThanNode; //page num to child node containing entries>value at offset
+} NonLeafEntry;
+*/
+}
+
+void IndexManager::printRecur(IXFileHandle ixfileHandle, int pageNum, const Attribute& attribute) const
+{
+	void* page = malloc(PAGE_SIZE);
+	ixfileHandle.readPage(pageNum, page);
+    	NodeHeader header = getNodeHeader(page);
+    	if(header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+    		for(int i = 0; i<header.numEntries; i++)
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		LeafEntry entry = getLeafEntry(page, i);
+			printValue((void*)((char*)page+entry.offSet), attribute);
+			cout<<": [";
+			//
+			cout<<"("<<entry.rid.pageNum<<","<<entry.rid.slotNum<<")";
+			if(header.numEntries -1 > i)
+			{
+				LeafEntry nextEntry = getLeafEntry(page, i + 1);
+				while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
+				{
+					cout<<"("<<nextEntry.rid.pageNum<<","<<nextEntry.rid.slotNum<<")";
+					i++;
+					nextEntry = getLeafEntry(page, i + 1);
+				}
+			}
+			cout<<"]";
+			//
+			cout<<"\"";
+			if (header.numEntries - 1 != i)
+			{
+				cout<<",";
+			}		
+		}
+		cout<<"]} \n";
+    	}
+	else if(!header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+		for (int i = 0; i < header.numEntries; i++ )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		NonLeafEntry entry = getNonLeafEntry(page, i);
+			printValue((void*)((char*)page+entry.offset), attribute);		
+			cout<<"\"";
+			if (header.numEntries - 1 != i)
+			{
+				cout<<",";
+			}		
+		}
+		cout<<"] , \n \"children\": [ \n ";
+		for (int i = 0; i < header.numEntries; i++ )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+        		NonLeafEntry entry = getNonLeafEntry(page, i);
+			IXFileHandle recurHandle;
+			if(entry.lessThanNode != -1)
+				printRecur(ixfileHandle, entry.lessThanNode, attribute);
+		}
+		NonLeafEntry entry = getNonLeafEntry(page, header.numEntries-1);
+		if(entry.greaterThanNode != -1)
+			printRecur(ixfileHandle, entry.greaterThanNode, attribute);
+		cout<<"]}";	
+	}
+}
+
+void IndexManager::printValue(void* data, const Attribute &attribute) const
+{
+	
+	switch (attribute.type)
+	{
+		case TypeInt :
+		{
+			int valueI = *(int*)data;
+			cout<<valueI;
+			break;
+		}
+		case TypeReal :
+		{
+			float valueF = *(float*)data;
+			cout<<valueF;
+			break; 
+		}
+		case TypeVarChar:
+		{
+			int size = *(int*)data;
+			string valueVC;
+			valueVC.assign((char*)data+sizeof(int), size);		
+			cout<<valueVC;
+			break;
+		}
+	}
 }
 
 IX_ScanIterator::IX_ScanIterator()

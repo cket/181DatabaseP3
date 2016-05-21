@@ -9,6 +9,8 @@
 # define IX_EOF (-1)  // end of the index scan
 
 #define NONODE (-1)
+#define NEWLESSTHANNODE (-2)
+#define NEWGREATERTHANNODE (-3)
 
 void* getValue(void * node, int offset, const Attribute &attribute);
 int compareVals(const void * val1, void * val2, const Attribute &attribute);
@@ -73,7 +75,9 @@ class IndexManager {
                 IX_ScanIterator &ix_ScanIterator);
 
         // Print the B+ tree in pre-order (in a JSON record format)
-        void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;
+        void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;	//PROBLEM - when things explode, look here.
+	void printValue(void* data, const Attribute &attribute) const;
+	void printRecur(IXFileHandle ixfileHandle, int pageNum, const Attribute& attribute) const;
 
     protected:
         IndexManager();
@@ -82,7 +86,6 @@ class IndexManager {
     private:
         static IndexManager *_index_manager;
         void setNodeHeader(NodeHeader header, void * page);
-        NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
         void setNonLeafEntry(void * page, unsigned entryNumber, NonLeafEntry nEntry);
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
         int searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum, unsigned &parentNodeNumber);
@@ -98,7 +101,7 @@ class IndexManager {
 //We want to use these functions in scan iterator and they don't require any specific members of IndexManager, so I moved them outside
         NodeHeader getNodeHeader(const void *node);
         LeafEntry getLeafEntry(void * page, unsigned entryNumber);
-
+	NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
 
 class IX_ScanIterator {
     public:
