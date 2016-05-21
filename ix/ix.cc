@@ -185,6 +185,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     }
     return 1;	//insert entry failed, fell through for loop.
 }
+
 int IndexManager::getKeySize(const void * key, const Attribute &attribute)
 {
     if(attribute.type == TypeVarChar){
@@ -286,7 +287,7 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
     //always start at root!
-    ixfileHandle.readPage(nodeNum, node); 
+    ixfileHandle.readPage(nodeNum, node);
     cout << "searchTree 1.0" << endl;
     NodeHeader header = getNodeHeader(node);
     if(header.isLeaf){
@@ -308,6 +309,68 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
     cout << "searchTree 3" << endl;
     return searchTree(ixfileHandle, value, attribute, entry.greaterThanNode, parentNodeNumber);
+}
+
+int IndexManager::getMostLeftLeafNumber(IXFileHandle &ixfileHandle){
+    if(ixfileHandle.getNumberOfPages() == 0){
+        return -1;
+    }
+    void * node = malloc(PAGE_SIZE);
+    memset(node, 0, PAGE_SIZE);
+    //always start at root!
+    ixfileHandle.readPage(0, node);
+    NodeHeader header = getNodeHeader(node);
+    if(header.isLeaf){
+        return -1;
+    }
+    NonLeafEntry entry = getNonLeafEntry(node, 0);
+    int leftNode = entry.lessThanNode;
+    void * tempNode = malloc(PAGE_SIZE);
+    NodeHeader header;
+    while(true){
+        memset(tempNode, 0, PAGE_SIZE);
+        ixfileHandle.readPage(leftNode, tempNode);
+        header = getNodeHeader(tempNode);
+        if(header.isLeaf)
+            break;
+        else{
+            entry = getNonLeafEntry(tempNode, 0);
+            leftNode = entry.lessThanNode;
+        }
+    }
+    free(tempNode);
+    return leftNode;
+}
+
+int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
+    if(ixfileHandle.getNumberOfPages() == 0){
+        return -1;
+    }
+    void * node = malloc(PAGE_SIZE);
+    memset(node, 0, PAGE_SIZE);
+    //always start at root!
+    ixfileHandle.readPage(0, node);
+    NodeHeader header = getNodeHeader(node);
+    if(header.isLeaf){
+        return -1;
+    }
+    NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
+    int rightNode = entry.greaterThanNode;
+    void * tempNode = malloc(PAGE_SIZE);
+    NodeHeader header;
+    while(true){
+        memset(tempNode, 0, PAGE_SIZE);
+        ixfileHandle.readPage(rightNode, tempNode);
+        header = getNodeHeader(tempNode);
+        if(header.isLeaf)
+            break;
+        else{
+            entry = getNonLeafEntry(tempNode, header.numEntries-1);
+            rightNode = entry.greaterThanNode;
+        }
+    }
+    free(tempNode);
+    return rightNode;
 }
 
 /*
