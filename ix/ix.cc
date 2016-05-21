@@ -164,8 +164,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         setNonLeafEntry(parentNode, 0, nle);
         //now point sibling nodes at each other
         //first get right siblings nodenum
-        NonLeafEntry nler = getNonLeafEntry(parentNode, 1);
-        int rightNodeNum = nler.greaterThanNode;
+        int rightNodeNum = nle.greaterThanNode;
 
         //now load the nodes
         void * leftNode = malloc(PAGE_SIZE);
@@ -230,7 +229,14 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             return SUCCESS;
         }
     }
-    return 1;	//insert entry failed, fell through for loop.
+    memcpy((char*)node+new_offset, key, keySize);
+    // insert at old entries offset
+    setLeafEntry(node, header.numEntries, to_insert);
+    // update node header
+    header.numEntries++;
+    setNodeHeader(header, node);
+    ixfileHandle.writePage(nodeNum, node);
+    return SUCCESS;
 }
 int IndexManager::getKeySize(const void * key, const Attribute &attribute)
 {
