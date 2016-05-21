@@ -237,7 +237,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 			setNonLeafEntry(parentNode, i, bubEntry);
 			break;
 		}
-		
 	}
 	
 	for(int i = header.numEntries/2; i < header.numEntries; i++)
@@ -245,7 +244,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 		LeafEntry shiftEntry = getLeafEntry(node, i);
 		insertEntry(ixfileHandle, attribute, getValue(node, shiftEntry.offSet, attribute), shiftEntry.rid);
 	}	
-	//delete back half of node entry
+	
     }
     to_insert.offSet = new_offset;
 
@@ -360,6 +359,24 @@ void IndexManager::moveEntries(void * page, int i, NodeHeader header)
         LeafEntry entry = getLeafEntry(page, i);	//removed _index_manager after moving getLeafEntry out of the class
         entry.offSet -= sizeof(LeafEntry);
         setLeafEntry(page, j, entry);
+    }
+}
+
+void IndexManager::moveNonLeafEntries(void * page, int i, NodeHeader header)
+{
+    //make space for new entry!
+    int current_offset = sizeof(NodeHeader) + sizeof(nonLeafEntry)*i;
+    int desired_offset = current_offset + sizeof(nonLeafEntry);
+    //how many entries after the current position we have to move
+    int number_to_move = header.numEntries-i;
+    int size = number_to_move * sizeof(nonLeafEntry);
+    memmove((char*)page+desired_offset, (char*)page+current_offset, size);
+
+    //save entries new positions!
+    for(int j = i; j < header.numEntries; j++){
+        nonLeafEntry entry = getnonLeafEntry(page, i);    //removed _index_manager after moving getnonLeafEntry out of the class
+        entry.offSet -= sizeof(nonLeafEntry);
+        setNonLeafEntry(page, j, entry);
     }
 }
 

@@ -90,6 +90,7 @@ class IndexManager {
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
         int searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum, unsigned &parentNodeNumber);
         void moveEntries(void * page, int i, NodeHeader header);
+        void moveNonLeafEntries(void * page, int i, NodeHeader header);
         int freeSpaceStart(void *page);
         int getKeySize(const void * key, const Attribute &attribute);
         RC createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const void *key, unsigned &pageNumber, const Attribute &attribute);
