@@ -140,8 +140,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 
         int keySize = getKeySize(key, attribute);
         entry.offset = PAGE_SIZE - keySize;
-        memcpy((char*)node+entry.offset, key, keySize);
+        memcpy((char*)root+entry.offset, key, keySize);
         entry.greaterThanNode = newPageNumber;
+        entry.lessThanNode = NONODE;
         NodeHeader header = getNodeHeader(root);
         header.numEntries += 1;
         header.freeSpaceOffset -= keySize;
@@ -299,10 +300,6 @@ int IndexManager::searchTree(IXFileHandle &ixfileHandle, const void* value, cons
         if(compareVals(value, min_val, attribute) < 0){
             return searchTree(ixfileHandle, value, attribute, entry.lessThanNode, parentNodeNumber);
         }
-    }
-    //check base case
-    if(nodeNum==0 && header.numEntries==0){
-        return 0;
     }
     //if we get here we know there is only one place to search
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
