@@ -423,7 +423,7 @@ void IndexManager::setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEn
             );
 }
 
-NonLeafEntry IndexManager::getNonLeafEntry(void * page, unsigned entryNumber)
+NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber)
 {
     // Getting the slot directory entry data.
     NonLeafEntry nEntry;
@@ -549,39 +549,63 @@ typedef struct LeafEntry
 	//	print: ]}
 	//	if more values at this level
 	//		print: ,
-	int keySize;
-	
-    	NodeHeader header = getNodeHeader(node);
+	static int depth = 0;	
+	void* page = malloc(PAGE_SIZE);
+	if(depth == 0)
+	{
+		ixfileHandle.readPage(0, page);
+	}
+    	NodeHeader header = getNodeHeader(page);
     	if(header.isLeaf)
 	{
     		cout<<"{\"keys\": [";
-		for (IMACOMPILEERROR )
+    		for(int i = 0; i<header.numEntries; i++)
 		{
 			cout<<"\"";
 			//print entry name/entry rid
+        		LeafEntry entry = getLeafEntry(page, i);
+			printValue((char*)page+entry.offSet, attribute);
+			cout<<": [";
+			//
+			cout<<"("<<entry.rid.pageNum<<","<<entry.rid.slotNum<<")";
+			LeafEntry nextEntry = getLeafEntry(page, i + 1);
+			while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
+			{
+				cout<<"("<<nextEntry.rid.pageNum<<","<<nextEntry.rid.slotNum<<")";
+				i++;
+				nextEntry = getLeafEntry(page, i + 1);
+			}
+			cout<<"]";
+			//
 			cout<<"\"";
-			if (notlastentry)
-			cout<<",";		
+			if (header.numEntries - 1 != i)
+			{
+				cout<<",";
+			}		
 		}
 		cout<<"]}";
     	}
 	else if(!header.isLeaf)
 	{
     		cout<<"{\"keys\": [";
-		for (IMACOMPILEERROR )
+		for (int i = 0; i < header.numEntries; i++ )
 		{
 			cout<<"\"";
 			//print entry name/entry rid
+        		NonLeafEntry entry = getNonLeafEntry(page, i);
+			printValue((void*)((char*)page+entry.offset), attribute);		
 			cout<<"\"";
-			if (notlastentry)
+			if (header.numEntries - 1 != i)
 			{
 				cout<<",";
 			}		
 		}
 		cout<<"] , \n \"children\": [ \n";
-	
-		printBtree(ixfileHandle, attribute);
-		cout<<"}";
+		depth++;
+//		printBtree(ixfileHandle, attribute);
+		depth--;
+		cout<<"]}";
+		
 	}
 	
 /*	{
@@ -605,9 +629,8 @@ typedef struct LeafEntry
 
 }
 
-void recursivePrint();
 
-void printValue(void* data, const Attribute &attribute)
+void IndexManager::printValue(void* data, const Attribute &attribute) const
 {
 	
 	switch (attribute.type)
