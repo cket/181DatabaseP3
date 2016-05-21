@@ -229,6 +229,7 @@ RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         }
     }
     ixfileHandle.writePage(nodeNum, node);
+    return 0;
 }
 
 /*
