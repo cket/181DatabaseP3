@@ -65,10 +65,8 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
 
 RC IndexManager::destroyFile(const string &fileName)
 {
-    cout << "HELP" << endl;
 	int err;
 	err = _pf_manager->destroyFile(fileName);
-    cout << "NOT WORKING" << endl;
 	if (err != 0)
 	{
 		return 1; //bad pfm file destruction
@@ -84,7 +82,6 @@ RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle)
 	{
 		return 1; //bad pfm file opening
 	}
-    cout << "HELLO WORLD" << endl;
 	return 0;
 }
 
@@ -102,7 +99,6 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle)
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-    cout << endl <<"number of pages : " << ixfileHandle.getNumberOfPages()<<endl;
     // DOES NOT HANDLE FULL NODES
     // still needs to handle insertion of key into page & decrement freeSpace offset
     LeafEntry to_insert;
@@ -111,7 +107,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //start search from root
     unsigned* parentNum = (unsigned*)malloc(sizeof(int));
     int nodeNum = searchTree(ixfileHandle, key, attribute, 0, *parentNum);
-    cout << nodeNum <<endl;
     void * node = malloc(PAGE_SIZE);
     memset(node, 0, PAGE_SIZE);
 
@@ -121,7 +116,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
      * Lets add our first leaf.
      */
     if(nodeNum == NONODE){
-        cout << "First insertion - building tree" <<endl;
         void * rootPage = malloc(PAGE_SIZE);
         memset(rootPage, 0, PAGE_SIZE);
         NodeHeader rootHeader;
@@ -190,7 +184,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         ixfileHandle.writePage((int)newPageNumber, leftNode);
         return SUCCESS;
     }
-    cout << "Existing Tree" <<endl;
     ixfileHandle.readPage(nodeNum, node);
 
     //we now have proper node. Search through sorted record & insert at proper location
@@ -199,7 +192,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     int keySize = getKeySize(key, attribute);
     int new_offset = header.freeSpaceOffset - keySize;
     if(freeSpaceStart(node)+sizeof(LeafEntry) > new_offset){
-        cout << "WE have to split"<<endl;
         //No space to insert. We have to split :(
         void * parentNode = malloc(PAGE_SIZE);
         memset(parentNode, 0, PAGE_SIZE);
@@ -250,8 +242,6 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     to_insert.offSet = new_offset;
 
     //iterate over entriesTree
-    cout << "number entries " << header.numEntries << endl;
-    cout << "iterating. On entry number: ";
     for(int i = 0; i<header.numEntries; i++){
         cout << i;
         LeafEntry entry = getLeafEntry(node, i);
@@ -679,32 +669,26 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
     if(ixfileHandle.getNumberOfPages() == 0 || ixfileHandle.getNumberOfPages() == -1){
         return -1;
     }
-    cout << "scan: 1" << endl;
     int nodeNum;
     if(lowKey == NULL){
-        cout << "scan: 1.01" << endl;
         nodeNum = getMostLeftLeafNumber(ixfileHandle);
     } else{
         nodeNum = searchTree(ixfileHandle, lowKey, attribute, 0, parentNum);
     }
     ix_ScanIterator.currentNode = nodeNum;
     
-    cout << "scan: 2" << endl;
     
     if(highKey == NULL){
-        cout << "scan: 2.01" << endl;
         nodeNum = getMostRightLeafNumber(ixfileHandle);
     } else{
         nodeNum = searchTree(ixfileHandle, highKey, attribute, 0, parentNum);
     }
-    cout << "scan: 2.1" << endl;
     ix_ScanIterator.endNode = nodeNum;
     ix_ScanIterator.ixfileHandle = &ixfileHandle;
     ix_ScanIterator.startFlag = 1;
     ix_ScanIterator.attribute = attribute;
     ix_ScanIterator.lowKeyInclusive = lowKeyInclusive;
     ix_ScanIterator.highKeyInclusive = highKeyInclusive;
-    cout << "scan: 3" << endl;
     int size;
 	if (attribute.type != TypeVarChar)
 	{
@@ -720,7 +704,6 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         ix_ScanIterator.lowKey = malloc(size);
     	memcpy(ix_ScanIterator.lowKey, lowKey, size);
     }
-    cout << "scan: 4" << endl;
 	if (attribute.type != TypeVarChar)
 	{
 		size = sizeof(int);
@@ -938,7 +921,6 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
     if(done)
         return IX_EOF;
-    cout << "currentNode: " << currentNode << endl;
     void *startNode = malloc(PAGE_SIZE);
     memset(startNode, 0, PAGE_SIZE);
     ixfileHandle->readPage(currentNode, startNode);
@@ -950,7 +932,6 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     NodeHeader header = getNodeHeader(startNode);
     // Is this the last node?
     int lastNode = (currentNode == endNode);	//for clarity, should be bool	
-    cout << "lastNode: " << lastNode << endl;
     /*
      * If this is the starting node, we're going to need to find the
      * first appropriate node. This logic tree gets a big convoluted
@@ -1008,14 +989,12 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
             // If we're on the last node and our return values are null, we return EOF
             if(lastNode){
                 done = true;
-                cout << "WE TRUE DAWG" << endl;
             }
             currentEntryNumber = 0;
             currentNode = header.nextNode;
         }
         startFlag = 0;
         cout << rid.pageNum << endl;
-        cout << "getnextryentry 1" << endl;
         return 0;
     }
     // Great, we already have our currentEntryNumber set with our current node.
@@ -1042,12 +1021,10 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         // If we're on the last node and our return values are null, we return EOF
         if(lastNode){
             done = true;
-            cout << "WE TRUE DAWG2" << endl;
         }
         currentEntryNumber = 0;
         currentNode = header.nextNode;
     }
-    cout << "Getnextentry 2" << endl;
     return 0;
 }
 
