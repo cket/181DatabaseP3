@@ -608,7 +608,7 @@ typedef struct LeafEntry
 		}
 		cout<<"] , \n \"children\": [ \n";
 		depth++;
-//		printBtree(ixfileHandle, attribute);
+		printBtree(ixfileHandle, attribute);
 		depth--;
 		cout<<"]}";
 		
