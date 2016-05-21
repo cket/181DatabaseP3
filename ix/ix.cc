@@ -3,6 +3,7 @@
 #include "ix.h"
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 
 IndexManager* IndexManager::_index_manager = 0;
 
@@ -453,7 +454,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         const Attribute &attribute,
         const void      *lowKey,
         const void      *highKey,
-        bool			lowKeyInclusive,
+        bool		lowKeyInclusive,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
@@ -504,6 +505,80 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
 
+		
+	//assume ixfileHandle is already open
+	
+/*
+ * typedef struct NodeHeader
+{
+    uint16_t numEntries;
+    int freeSpaceOffset;
+    bool isLeaf;
+    // We'll need the addresses of the previous and next node
+    int nextNode;
+    int previousNode;
+} NodeHeader;
+
+typedef struct NonLeafEntry
+{
+    int offset; //offset to value. can't store directly b/c don't know data type
+    int lessThanNode; //page num to child node containing entries<value at offset
+    int greaterThanNode; //page num to child node containing entries>value at offset
+} NonLeafEntry;
+
+typedef struct LeafEntry
+{
+    int offSet; //offset to key
+    RID rid; //rid for rest of record
+} LeafEntry;*/
+
+	//recursive 
+	//	if non-leaf: 
+	//		print: {"keys": ["entry1", "entry2", "entry3"]
+	//	if leaf
+	//		print: {"keys": ["entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]"]
+	//	if not leaf
+	//		print: , \n "children": [ \n
+	//		loop i<(num pointers)
+	//			recur(i)
+	//	print: ]}
+	//	if more values at this level
+	//		print: ,
+	int keySize;
+	
+    	NodeHeader header = getNodeHeader(node);
+    	if(header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+		for (IMACOMPILEERROR )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+			cout<<"\"";
+			if (notlastentry)
+			cout<<",";		
+		}
+		cout<<"]}";
+    	}
+	else if(!header.isLeaf)
+	{
+    		cout<<"{\"keys\": [";
+		for (IMACOMPILEERROR )
+		{
+			cout<<"\"";
+			//print entry name/entry rid
+			cout<<"\"";
+			if (notlastentry)
+			{
+				cout<<",";
+			}		
+		}
+		cout<<"] , \n \"children\": [ \n";
+	
+		printBtree(ixfileHandle, attribute);
+		cout<<"}";
+	}
+	
 /*	{
 	"keys":["P"],
 	"children":[
@@ -522,28 +597,10 @@ void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attri
 	 ]}
 	]
 	}*/
-		
-	//assume ixfileHandle is already open
-	
-
-	//recursive 
-	//	if non-leaf: 
-	//		print: {"keys": ["entry1", "entry2", "entry3"]
-	//	if leaf
-	//		print: {"keys": ["entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]", "entry.name: [(entry.rid)]"]
-	//	if not leaf
-	//		print: , \n "children": [ \n
-	//		loop i<(num pointers)
-	//			recur(i)
-	//	print: ]}
-	//	if more values at this level
-	//		print: ,
-
-	
-	printBtree(ixfileHandle, attribute);
-	
 
 }
+
+void recursivePrint();
 
 void printValue(void* data, const Attribute &attribute)
 {
@@ -553,7 +610,7 @@ void printValue(void* data, const Attribute &attribute)
 		case TypeInt :
 		{
 			int valueI = *(int*)data;
-			count<<valueI;
+			cout<<valueI;
 			break;
 		}
 		case TypeReal :
