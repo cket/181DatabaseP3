@@ -108,6 +108,7 @@ class IX_ScanIterator {
         int startFlag;
         bool lowKeyInclusive;
         bool highKeyInclusive;
+        bool done;
         Attribute attribute;
         void *lowKey;
         void *highKey;

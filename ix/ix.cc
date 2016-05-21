@@ -65,8 +65,10 @@ RC IndexManager::createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const vo
 
 RC IndexManager::destroyFile(const string &fileName)
 {
+    cout << "HELP" << endl;
 	int err;
 	err = _pf_manager->destroyFile(fileName);
+    cout << "NOT WORKING" << endl;
 	if (err != 0)
 	{
 		return 1; //bad pfm file destruction
@@ -82,7 +84,7 @@ RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle)
 	{
 		return 1; //bad pfm file opening
 	}
-
+    cout << "HELLO WORLD" << endl;
 	return 0;
 }
 
@@ -324,22 +326,25 @@ int IndexManager::getMostLeftLeafNumber(IXFileHandle &ixfileHandle){
         return -1;
     }
     NonLeafEntry entry = getNonLeafEntry(node, 0);
-    int leftNode = entry.lessThanNode;
+    int nodeNum = entry.lessThanNode;
+    if(nodeNum == NONODE)
+        nodeNum = entry.greaterThanNode;
     void * tempNode = malloc(PAGE_SIZE);
-    NodeHeader header;
     while(true){
         memset(tempNode, 0, PAGE_SIZE);
-        ixfileHandle.readPage(leftNode, tempNode);
+        ixfileHandle.readPage(nodeNum, tempNode);
         header = getNodeHeader(tempNode);
         if(header.isLeaf)
             break;
         else{
             entry = getNonLeafEntry(tempNode, 0);
-            leftNode = entry.lessThanNode;
+            nodeNum = entry.lessThanNode;
+            if(nodeNum == NONODE)
+                nodeNum = entry.greaterThanNode;
         }
     }
     free(tempNode);
-    return leftNode;
+    return nodeNum;
 }
 
 int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
@@ -355,22 +360,25 @@ int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
         return -1;
     }
     NonLeafEntry entry = getNonLeafEntry(node, header.numEntries-1);
-    int rightNode = entry.greaterThanNode;
+    int nodeNum = entry.greaterThanNode;
+    if(nodeNum == NONODE)
+        nodeNum = entry.lessThanNode;
     void * tempNode = malloc(PAGE_SIZE);
-    NodeHeader header;
     while(true){
         memset(tempNode, 0, PAGE_SIZE);
-        ixfileHandle.readPage(rightNode, tempNode);
+        ixfileHandle.readPage(nodeNum, tempNode);
         header = getNodeHeader(tempNode);
         if(header.isLeaf)
             break;
         else{
             entry = getNonLeafEntry(tempNode, header.numEntries-1);
-            rightNode = entry.greaterThanNode;
+            nodeNum = entry.greaterThanNode;
+            if(nodeNum == NONODE)
+                nodeNum = entry.greaterThanNode;
         }
     }
     free(tempNode);
-    return rightNode;
+    return nodeNum;
 }
 
 /*
@@ -407,6 +415,15 @@ int IndexManager::getMostRightLeafNumber(IXFileHandle &ixfileHandle){
 	*/
 	int compareVals(const void * val1, void * val2, const Attribute &attribute)
 	{
+        if(val1 == NULL && val2 == NULL){
+            return 0;
+        }
+        if(val1 == NULL && val2 != NULL){
+            return -1;
+        }
+        if(val1 != NULL && val2 == NULL){
+            return 1;
+        }
 	    if(attribute.type == TypeInt){
 		if(*(int*)val1 < *(int*)val2){
 		    return -1;
@@ -537,24 +554,30 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-    unsigned * parentNum;
-
+    unsigned parentNum;
+    // Check if a file is attached to filehandle
+    if(ixfileHandle.getNumberOfPages() == 0 || ixfileHandle.getNumberOfPages() == -1){
+        return -1;
+    }
     cout << "scan: 1" << endl;
-    int nodeNum = searchTree(ixfileHandle, lowKey, attribute, 0, *parentNum);
-    cout << "scan: 1.1" << endl;
-    void *startNode = malloc(PAGE_SIZE);
-    memset(startNode, 0, PAGE_SIZE);
-    ixfileHandle.readPage(nodeNum, startNode);
-    cout << "scan: 2" << endl;
-
+    int nodeNum;
+    if(lowKey == NULL){
+        cout << "scan: 1.01" << endl;
+        nodeNum = getMostLeftLeafNumber(ixfileHandle);
+    } else{
+        nodeNum = searchTree(ixfileHandle, lowKey, attribute, 0, parentNum);
+    }
     ix_ScanIterator.currentNode = nodeNum;
-    nodeNum = searchTree(ixfileHandle, highKey, attribute, 0, *parentNum);
-    cout << "Tap" << endl;
-    void *endNode = malloc(PAGE_SIZE);
-    memset(endNode, 0, PAGE_SIZE);
-    ixfileHandle.readPage(nodeNum, endNode);
-
-    cout << "Hit" << endl;
+    
+    cout << "scan: 2" << endl;
+    
+    if(highKey == NULL){
+        cout << "scan: 2.01" << endl;
+        nodeNum = getMostRightLeafNumber(ixfileHandle);
+    } else{
+        nodeNum = searchTree(ixfileHandle, highKey, attribute, 0, parentNum);
+    }
+    cout << "scan: 2.1" << endl;
     ix_ScanIterator.endNode = nodeNum;
     ix_ScanIterator.ixfileHandle = &ixfileHandle;
     ix_ScanIterator.startFlag = 1;
@@ -571,10 +594,12 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 	{
 		size = sizeof(int) + *(int*)lowKey;
 	}
-    cout << "Lowkey is null?: " << lowKey << endl;
-    cout << "Size: " << size << endl;
-    ix_ScanIterator.lowKey = malloc(size);
-	memcpy(ix_ScanIterator.lowKey, lowKey, size);
+    if(lowKey == NULL)
+        ix_ScanIterator.lowKey = NULL;
+    else{
+        ix_ScanIterator.lowKey = malloc(size);
+    	memcpy(ix_ScanIterator.lowKey, lowKey, size);
+    }
     cout << "scan: 4" << endl;
 	if (attribute.type != TypeVarChar)
 	{
@@ -584,8 +609,12 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 	{
 		size = sizeof(int) + *(int*)highKey;
 	}
-    ix_ScanIterator.highKey = malloc(size);
-	memcpy(ix_ScanIterator.highKey, highKey, size);
+    if(lowKey == NULL)
+        ix_ScanIterator.lowKey = NULL;
+    else{
+        ix_ScanIterator.highKey = malloc(size);
+        memcpy(ix_ScanIterator.highKey, highKey, size);
+    }
     return 0;
 }
 
@@ -597,6 +626,7 @@ IX_ScanIterator::IX_ScanIterator()
     currentNode = NULL;
     endNode = NULL;
     startFlag = 0;
+    done = false;
 }
 
 IX_ScanIterator::~IX_ScanIterator()
@@ -613,6 +643,9 @@ IX_ScanIterator::~IX_ScanIterator()
  */
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
+    if(done)
+        return IX_EOF;
+    cout << "currentNode: " << currentNode << endl;
     void *startNode = malloc(PAGE_SIZE);
     memset(startNode, 0, PAGE_SIZE);
     ixfileHandle->readPage(currentNode, startNode);
@@ -623,8 +656,8 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 
     NodeHeader header = getNodeHeader(startNode);
     // Is this the last node?
-    int lastNode = (startNode == eNode);	//for clarity, should be bool	
-
+    int lastNode = (currentNode == endNode);	//for clarity, should be bool	
+    cout << "lastNode: " << lastNode << endl;
     /*
      * If this is the starting node, we're going to need to find the
      * first appropriate node. This logic tree gets a big convoluted
@@ -678,14 +711,18 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
         }
         currentEntryNumber = i;
         // If we're past the number of entries in the node, go to the next node
-        if(++currentEntryNumber == header.numEntries){
+        if(++currentEntryNumber >= header.numEntries - 1){
             // If we're on the last node and our return values are null, we return EOF
-            if(lastNode && &rid == NULL)
-                return IX_EOF;
+            if(lastNode){
+                done = true;
+                cout << "WE TRUE DAWG" << endl;
+            }
             currentEntryNumber = 0;
-            // startNode = startNode->nextNode;	//PROBLEM - should be typecast to LeafEntry and next/prev nodes should be stored in LeafEntry
+            currentNode = header.nextNode;
         }
         startFlag = 0;
+        cout << rid.pageNum << endl;
+        cout << "getnextryentry 1" << endl;
         return 0;
     }
     // Great, we already have our currentEntryNumber set with our current node.
@@ -708,13 +745,16 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
     }
     // iterate the currentEntryNumber
     // Could be a bug here with reaching the last value in a node
-    if(++currentEntryNumber == header.numEntries){
+    if(++currentEntryNumber >= header.numEntries - 1){
         // If we're on the last node and our return values are null, we return EOF
-        if(lastNode && &rid == NULL)
-            return IX_EOF;
+        if(lastNode){
+            done = true;
+            cout << "WE TRUE DAWG2" << endl;
+        }
         currentEntryNumber = 0;
-        // startNode = startNode->nextNode;	//PROBLEM - should be typecast to a LeafEntry and next/prev nodes should be stored in LeafEntry
+        currentNode = header.nextNode;
     }
+    cout << "Getnextentry 2" << endl;
     return 0;
 }
 
