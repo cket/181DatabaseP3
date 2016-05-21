@@ -576,12 +576,14 @@ void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attri
 			cout<<"\"";
 			//print entry name/entry rid
         		NonLeafEntry entry = getNonLeafEntry(page, i);
-			printRecur(ixfileHandle, entry.lessThanNode, attribute);
+			if(entry.lessThanNode != -1)
+				printRecur(ixfileHandle, entry.lessThanNode, attribute);
 		}
 		NonLeafEntry entry = getNonLeafEntry(page, header.numEntries-1);
-		printRecur(ixfileHandle, entry.greaterThanNode, attribute);
+		if(entry.greaterThanNode != -1)
+			printRecur(ixfileHandle, entry.greaterThanNode, attribute);
 		depth--;
-		cout<<"]}";	
+		cout<<"]} \n";	
 	}
 /*typedef struct NonLeafEntry
 {
@@ -605,16 +607,19 @@ void IndexManager::printRecur(IXFileHandle ixfileHandle, int pageNum, const Attr
 			cout<<"\"";
 			//print entry name/entry rid
         		LeafEntry entry = getLeafEntry(page, i);
-			printValue((char*)page+entry.offSet, attribute);
+			printValue((void*)((char*)page+entry.offSet), attribute);
 			cout<<": [";
 			//
 			cout<<"("<<entry.rid.pageNum<<","<<entry.rid.slotNum<<")";
-			LeafEntry nextEntry = getLeafEntry(page, i + 1);
-			while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
+			if(header.numEntries != i)
 			{
-				cout<<"("<<nextEntry.rid.pageNum<<","<<nextEntry.rid.slotNum<<")";
-				i++;
-				nextEntry = getLeafEntry(page, i + 1);
+				LeafEntry nextEntry = getLeafEntry(page, i + 1);
+				while(compareVals(getValue(page, entry.offSet, attribute), getValue(page,nextEntry.offSet, attribute), attribute) == 0)
+				{
+					cout<<"("<<nextEntry.rid.pageNum<<","<<nextEntry.rid.slotNum<<")";
+					i++;
+					nextEntry = getLeafEntry(page, i + 1);
+				}
 			}
 			cout<<"]";
 			//
@@ -624,7 +629,7 @@ void IndexManager::printRecur(IXFileHandle ixfileHandle, int pageNum, const Attr
 				cout<<",";
 			}		
 		}
-		cout<<"]}";
+		cout<<"]} \n";
     	}
 	else if(!header.isLeaf)
 	{
@@ -641,17 +646,19 @@ void IndexManager::printRecur(IXFileHandle ixfileHandle, int pageNum, const Attr
 				cout<<",";
 			}		
 		}
-		cout<<"] , \n \"children\": [ \n";
+		cout<<"] , \n \"children\": [ \n ";
 		for (int i = 0; i < header.numEntries; i++ )
 		{
 			cout<<"\"";
 			//print entry name/entry rid
         		NonLeafEntry entry = getNonLeafEntry(page, i);
 			IXFileHandle recurHandle;
-			printRecur(ixfileHandle, entry.lessThanNode, attribute);
+			if(entry.lessThanNode != -1)
+				printRecur(ixfileHandle, entry.lessThanNode, attribute);
 		}
 		NonLeafEntry entry = getNonLeafEntry(page, header.numEntries-1);
-		printRecur(ixfileHandle, entry.greaterThanNode, attribute);
+		if(entry.greaterThanNode != -1)
+			printRecur(ixfileHandle, entry.greaterThanNode, attribute);
 		cout<<"]}";	
 	}
 }
