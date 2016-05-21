@@ -51,6 +51,7 @@ int testCase_3(const string &indexFileName, const Attribute &attribute)
     rc = indexManager->scan(ixfileHandle, attribute, NULL, NULL, true, true, ix_ScanIterator);
     assert(rc == success && "indexManager::scan() should not fail.");
 
+    cerr << "asdnjkasdn" << endl;
     // There should be one record
     int count = 0;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)

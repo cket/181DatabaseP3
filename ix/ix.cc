@@ -461,7 +461,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
         bool        	highKeyInclusive,
         IX_ScanIterator &ix_ScanIterator)
 {
-    IX_ScanIterator* iterator;
+    IX_ScanIterator* iterator = (IX_ScanIterator *)malloc(sizeof(IX_ScanIterator));
 
     unsigned * parentNum;
 
@@ -474,6 +474,8 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
     void *endNode = malloc(PAGE_SIZE);
     memset(endNode, 0, PAGE_SIZE);
     ixfileHandle.readPage(nodeNum, endNode);
+
+    cout << "Hit" << endl;
 
     iterator->currentNode = startNode;
     iterator->endNode = endNode;
@@ -647,6 +649,24 @@ IXFileHandle::IXFileHandle()
 
 IXFileHandle::~IXFileHandle()
 {
+}
+
+RC IXFileHandle::readPage(PageNum pageNum, void *data){
+    FileHandle::readPage(pageNum, data);
+    ixReadPageCounter++;
+    return 0;
+}
+
+RC IXFileHandle::writePage(PageNum pageNum, const void *data){
+    FileHandle::writePage(pageNum, data);
+    ixWritePageCounter++;
+    return 0;
+}
+
+RC IXFileHandle::appendPage(const void *data){
+    FileHandle::appendPage(data);
+    ixAppendPageCounter++;
+    return 0;
 }
 
 RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount)
