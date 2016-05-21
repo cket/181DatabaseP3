@@ -82,14 +82,16 @@ class IndexManager {
 
     private:
         static IndexManager *_index_manager;
-        RC IndexManager::createLeaf(IXFileHandle &ixfileHandle);
         void setNodeHeader(NodeHeader header, void * page);
         NonLeafEntry getNonLeafEntry(void * page, unsigned entryNumber);
+        void setNonLeafEntry(void * page, unsigned entryNumber, NonLeafEntry nEntry);
         void setLeafEntry(void * page, unsigned entryNumber, LeafEntry lEntry);
-        void * searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum=0);
+        int searchTree(IXFileHandle &ixfileHandle, const void* value, const Attribute &attribute, int nodeNum, unsigned &parentNodeNumber);
         void moveEntries(void * page, int i, NodeHeader header);
         int freeSpaceStart(void *page);
-        int getKeySize(void * page, const void * key, const Attribute &attribute);
+        int getKeySize(const void * key, const Attribute &attribute);
+        RC createLeaf(IXFileHandle &ixfileHandle, const RID &rid, const void *key, unsigned &pageNumber, const Attribute &attribute);
+        void deleteLeafEntry(void * page, int i, NodeHeader header);
 };
 
 //We want to use these functions in scan iterator and they don't require any specific members of IndexManager, so I moved them outside
