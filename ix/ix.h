@@ -9,6 +9,8 @@
 # define IX_EOF (-1)  // end of the index scan
 
 #define NONODE (-1)
+#define NEWLESSTHANNODE (-2)
+#define NEWGREATERTHANNODE (-3)
 
 void* getValue(void * node, int offset, const Attribute &attribute);
 int compareVals(const void * val1, void * val2, const Attribute &attribute);
