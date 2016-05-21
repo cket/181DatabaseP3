@@ -205,26 +205,26 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         memset(parentNode, 0, PAGE_SIZE);
         ixfileHandle.readPage(*parentNum, parentNode);
 
-	void * newNode = malloc(PAGE_SIZE);
+	    void * newNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
         //ixfileHandle.readPage(*newNum, newNode);
         
-	void * rightNode = malloc(PAGE_SIZE);
+	    void * rightNode = malloc(PAGE_SIZE);
         memset(newNode, 0, PAGE_SIZE);
         //ixfileHandle.readPage(*rightNum, rightNode);
 
-	NodeHeader parentHeader = getNodeHeader(parentNode);
-	NodeHeader newHeader = getNodeHeader(newNode);
-	NodeHeader rightHeader = getNodeHeader(rightNode);
-	
-	LeafEntry bubbleEntry = getLeafEntry(node, header.numEntries/2);
-	NonLeafEntry bubEntry;
-	for(int i = header.numEntries/2; i < header.numEntries; i++)
-	{
-		LeafEntry shiftEntry = getLeafEntry(node, i);
-		insertEntry(ixfileHandle, attribute, getValue(node, shiftEntry.offSet, attribute), shiftEntry.rid);
-	}	
-	//delete back half of node entry
+    	NodeHeader parentHeader = getNodeHeader(parentNode);
+    	NodeHeader newHeader = getNodeHeader(newNode);
+    	NodeHeader rightHeader = getNodeHeader(rightNode);
+    	
+    	LeafEntry bubbleEntry = getLeafEntry(node, header.numEntries/2);
+    	NonLeafEntry bubEntry;
+    	for(int i = header.numEntries/2; i < header.numEntries; i++)
+    	{
+    		LeafEntry shiftEntry = getLeafEntry(node, i);
+    		insertEntry(ixfileHandle, attribute, getValue(node, shiftEntry.offSet, attribute), shiftEntry.rid);
+    	}	
+    	//delete back half of node entry
     }
     to_insert.offSet = new_offset;
 
